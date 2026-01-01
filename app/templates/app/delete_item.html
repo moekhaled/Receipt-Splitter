@@ -1,0 +1,19 @@
+{% extends "app/base.html" %}
+
+{% block title %}Delete Item{% endblock %}
+
+{% block content %}
+
+
+<div id="delete-container">
+    <h2>Delete Item</h2>
+    <p>Are you sure you want to delete the item: <strong>{{ item.name }}</strong>?</p>
+    <p>Price: {{ item.price }} | Quantity: {{ item.quantity }}</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn-delete">Yes, Delete</button>
+        <a href="{% url 'person-details' session_pk=item.person.session.pk pk=item.person.pk %}" class="btn-cancel">Cancel</a>
+    </form>
+</div>
+{% endblock %}

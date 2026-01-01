@@ -1,0 +1,29 @@
+{% extends "app/base.html" %}
+
+{% block title %}Delete {{ person.name }}{% endblock %}
+
+{% block content %}
+<div id="delete-person-container">
+
+    <h2>Delete {{ person.name }}?</h2>
+
+    <p class="warning-text">
+        This action cannot be undone.
+    </p>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="delete-actions">
+            <button type="submit" class="danger-button">
+                Yes, delete
+            </button>
+
+            <a href="{% url 'person-details' session_pk=person.session.pk pk=person.pk %}" class="form-button cancel-btn">
+                Cancel
+            </a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

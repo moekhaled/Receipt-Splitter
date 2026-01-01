@@ -1,0 +1,799 @@
+/* Page layout */
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #f5f6fa;
+    margin: 0;
+    padding: 40px;
+}
+
+/* Container */
+#persons-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Table */
+#persons-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Header */
+#persons-table thead {
+    background-color: #2f3640;
+    color: #ffffff;
+}
+
+#persons-table th {
+    padding: 12px;
+    text-align: left;
+}
+
+/* Rows */
+#persons-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+#persons-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Columns */
+.person-name {
+    font-weight: 600;
+}
+
+.person-total {
+    text-align: right;
+}
+
+/* Hover effect */
+#persons-table tbody tr:hover {
+    background-color: #f1f2f6;
+}
+/* Links */
+.person-name a {
+    color: #273c75;
+    text-decoration: none;
+}
+
+.person-name a:hover {
+    text-decoration: underline;
+}
+
+/* Grand total */
+#grand-total-row {
+    background-color: #dcdde1;
+}
+
+#grand-total-row td {
+    padding: 14px;
+}
+
+/* Person details */
+#person-details {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+#items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#items-table th,
+#items-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+#person-total {
+    text-align: right;
+    font-size: 1.1em;
+    margin-top: 15px;
+}
+/* Header / Navbar */
+#main-header {
+    background-color: #1e272e;
+    padding: 15px 40px;
+    margin-bottom: 30px;
+}
+
+#main-nav {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.nav-link {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.nav-link:hover {
+    color: #3331b3;
+}
+
+/* Main content wrapper */
+#main-content {
+    max-width: 900px;
+    margin: 0 auto;
+}
+.nav-button {
+    display: inline-block;
+    margin-left: 20px;
+    padding: 8px 16px;
+    background-color: #201e70;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.nav-button:hover {
+    background-color: #1e1d4f;
+}
+/* Add Person page container */
+#add-person-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 25px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+/* Form */
+#add-person-form {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Form group */
+.form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+/* Input field styling */
+.form-group input {
+    padding: 8px 10px;
+    font-size: 1em;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Submit button */
+.form-button {
+    padding: 10px 16px;
+    background-color: #201e70;
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.form-button:hover {
+    background-color: #1e1d4f;
+}
+
+/* Add Item page container */
+#add-item-container {
+    max-width: 450px;
+    margin: 50px auto;
+    padding: 25px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+/* Form layout */
+#add-item-form {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Form groups */
+#add-item-form .form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+#add-item-form .form-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+/* Input styling */
+#add-item-form input {
+    padding: 8px 10px;
+    font-size: 1em;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Submit button */
+#add-item-form .form-button {
+    padding: 10px 16px;
+    background-color: #201e70;
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+}
+
+#add-item-form .form-button:hover {
+    background-color: #1e1d4f;
+}
+
+/* Optional: make heading centered */
+#add-item-container h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #2f3640;
+}
+/* Alter user page */
+#alter-user-container {
+    max-width: 420px;
+    margin: 50px auto;
+    padding: 22px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+#alter-user-form .form-group {
+    margin-bottom: 14px;
+    display:flex;
+    flex-direction:column;
+}
+
+#alter-user-form .form-group label {
+    font-weight:600;
+    margin-bottom:6px;
+}
+
+#alter-user-form input {
+    padding:8px 10px;
+    border:1px solid #ccc;
+    border-radius:5px;
+    font-size:1rem;
+}
+
+/* Buttons row */
+.edit-actions {
+    display:flex;
+    gap:12px;
+    margin-top:18px;
+}
+
+/* Reuse existing classes */
+.form-button {
+    padding:10px 16px;
+    background-color:#201e70;
+    color:#fff;
+    border-radius:5px;
+    font-weight:600;
+    border:none;
+    cursor:pointer;
+}
+
+.form-button:hover { background-color:#1e1d4f; }
+
+.danger-button {
+    padding:10px 16px;
+    background-color:#e84118;
+    color:#fff;
+    border-radius:5px;
+    font-weight:600;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.danger-button:hover { background-color:#c23616; }
+
+/* clickable name style (used in single_person.html) */
+.person-link {
+    color:#2f3640;
+    text-decoration:none;
+    font-weight:700;
+}
+
+.person-link:hover { 
+    text-decoration:underline; 
+    color:#2b29a8;
+
+}
+/* Item link */
+.item-link {
+    color: #273c75;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.item-link:hover {
+    text-decoration: underline;
+    color: #3f68d9;
+}
+
+/* Alter item page */
+#alter-item-container {
+    max-width: 450px;
+    margin: 50px auto;
+    padding: 22px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.muted-text {
+    color: #718093;
+    margin-bottom: 15px;
+}
+
+/* Delete item page */
+#delete-item-container {
+    max-width: 420px;
+    margin: 60px auto;
+    padding: 24px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+#session-navbar {
+    margin: 20px 0;
+    padding: 10px 0;
+    border-bottom: 1px solid #dcdde1;
+}
+
+#session-navbar a {
+    margin-right: 20px;
+    text-decoration: none;
+    color: #273c75;
+    font-weight: 500;
+}
+
+#session-navbar a:hover {
+    text-decoration: underline;
+}
+#delete-container {
+    max-width: 500px;
+    margin: 50px auto;
+    padding: 30px;
+    border: 1px solid #dcdde1;
+    border-radius: 8px;
+    background-color: #f5f6fa;
+    text-align: center;
+}
+
+#delete-container h2 {
+    color: #e84118;
+    margin-bottom: 20px;
+}
+
+#delete-container p {
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.btn-delete, .btn-cancel {
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn-delete {
+    background-color: #e84118;
+    color: white;
+    border: none;
+}
+
+.btn-delete:hover {
+    background-color: #c23616;
+}
+
+.btn-cancel {
+    background-color: #dcdde1;
+    color: #2f3640;
+}
+
+.btn-cancel:hover {
+    background-color: #b2bec3;
+}
+/* People table styling */
+#people-table {
+    width: 80%;
+    margin: 20px auto;
+    border-collapse: collapse;
+    font-size: 1.1em;
+    text-align: left;
+}
+
+#people-table thead {
+    background-color: #273c75;
+    color: #fff;
+}
+
+#people-table thead th {
+    padding: 12px;
+}
+
+#people-table tbody tr:nth-child(even) {
+    background-color: #f5f6fa;
+}
+
+#people-table tbody td {
+    padding: 10px;
+    border-bottom: 1px solid #dcdde1;
+}
+
+#people-table tbody tr:hover {
+    background-color: #dcdde1;
+}
+
+#grand-total {
+    font-weight: bold;
+    color: #192a56;
+}
+
+h2 {
+    color: #192a56;
+}
+/* Person names in the table */
+#people-table tbody td a {
+    color: #273c75;           /* deep blue color */
+    font-weight: 600;         /* slightly bold */
+    text-decoration: none;    /* remove underline */
+    transition: color 0.2s;  /* smooth hover transition */
+}
+
+#people-table tbody td a:hover {
+    color: #0097e6;           /* lighter blue on hover */
+    text-decoration: underline;
+}
+/* Sessions table styling */
+#sessions-table {
+    width: 80%;
+    margin: 20px auto;
+    border-collapse: collapse;
+    font-size: 1.1em;
+    text-align: left;
+}
+
+#sessions-table thead {
+    background-color: #273c75;
+    color: #fff;
+}
+
+#sessions-table thead th {
+    padding: 12px;
+}
+
+#sessions-table tbody tr:nth-child(even) {
+    background-color: #f5f6fa;
+}
+
+#sessions-table tbody td {
+    padding: 10px;
+    border-bottom: 1px solid #dcdde1;
+}
+
+#sessions-table tbody tr:hover {
+    background-color: #dcdde1;
+}
+
+/* Style session names */
+#sessions-table tbody td a {
+    color: #273c75;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+#sessions-table tbody td a:hover {
+    color: #0097e6;
+    text-decoration: underline;
+}
+
+h2 {
+    color: #192a56;
+}
+/* Form container */
+#form-container {
+    max-width: 500px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #f5f6fa;
+    border-radius: 8px;
+    border: 1px solid #dcdde1;
+}
+
+#form-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #192a56;
+}
+
+#form-container label {
+    font-weight: 600;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #273c75;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 5px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background-color: #192a56;
+}
+
+.btn-cancel {
+    margin-left: 10px;
+    background-color: #dcdde1;
+    color: #2f3640;
+    padding: 10px 18px;
+    border-radius: 5px;
+    text-decoration: none;
+}
+
+.btn-cancel:hover {
+    background-color: #b2bec3;
+}
+/* ---------- Session Form Container (scoped) ---------- */
+#session-form-container {
+    max-width: 640px;           /* slightly wider for grid */
+    margin: 40px auto;
+    padding: 28px;
+    background-color: #ffffff;  /* card look */
+    border-radius: 10px;
+    border: 1px solid #e6e9ef;
+    box-shadow: 0 6px 18px rgba(17,24,39,0.04);
+}
+
+/* Heading */
+#session-form-container h2 {
+    text-align: center;
+    margin: 0 0 22px;
+    color: #192a56;
+    font-size: 1.35rem;
+}
+
+/* Generic form row */
+.session-form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;                  /* label → input spacing */
+    margin-bottom: 18px;       /* row → row spacing */
+}
+
+
+/* compact variant for the small grid inputs */
+.session-form-row.small {
+    margin-bottom: 8px;
+}
+
+/* labels */
+.session-form-row label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #2f3640;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    min-height: 18px;
+}
+
+/* inputs/selects — apply to both default widget and number inputs */
+#session-form-container input[type="text"],
+#session-form-container input[type="number"],
+#session-form-container input[type="tel"],
+#session-form-container input[type="email"],
+#session-form-container select,
+#session-form-container textarea {
+    padding: 10px 12px;
+    font-size: 0.98rem;
+    border-radius: 8px;
+    border: 1px solid #d6dbe9;
+    background: #fbfcff;
+    transition: border-color .15s ease, box-shadow .12s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* focus state */
+#session-form-container input:focus,
+#session-form-container select:focus,
+#session-form-container textarea:focus {
+    outline: none;
+    border-color: #273c75;
+    box-shadow: 0 6px 18px rgba(39,60,117,0.06);
+}
+
+/* grid for tax/service/discount */
+.session-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;                 /* horizontal & vertical spacing */
+    align-items: stretch;      /* FORCE equal row height */
+}
+
+/* small inputs inside grid get full width automatically via input rules */
+
+/* Field error */
+.field-error {
+    color: #c23616;
+    font-size: 0.92rem;
+    min-height: 16px;          /* reserve space even when empty */
+    margin-top: 4px;
+}
+
+/* Actions */
+.session-form-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #273c75;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 12px rgba(39,60,117,0.08);
+}
+
+.btn-primary:hover { background-color: #192a56; }
+
+.btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    background: #e9eef8;
+    color: #2f3640;
+    border-radius: 8px;
+    text-decoration: none;
+}
+
+.btn-cancel:hover { background: #dbe5f6; }
+
+/* Small screens: stack grid into single column */
+@media (max-width: 640px) {
+    #session-form-container { padding: 20px; }
+    .session-grid { grid-template-columns: 1fr; }
+}
+
+/* Optional: style number arrows (hide in WebKit if you prefer) */
+/* input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+} */
+.session-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 30px;
+}
+
+.session-header h2 {
+    margin: 0;
+    text-align: center;
+    flex: 1;
+}
+
+.session-header .btn {
+    margin-left: auto;
+}
+/* ==========================
+   DETAILED SESSION VIEW
+   ========================== */
+
+#detailed-session {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.page-title {
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 32px;
+}
+
+/* Person card */
+.person-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Header row */
+.person-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.person-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.person-total {
+    font-weight: 600;
+    color: #2f3640;
+}
+
+/* Items table */
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.items-table th,
+.items-table td {
+    padding: 10px 12px;
+    text-align: left;
+}
+
+.items-table thead {
+    background-color: #f1f2f6;
+}
+
+.items-table tbody tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+.items-table th {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.empty-items {
+    color: #888;
+    font-style: italic;
+}

@@ -1,0 +1,20 @@
+{% extends "app/base.html" %}
+
+{% block title %}Add Person{% endblock %}
+
+{% block content %}
+<div id="add-person-container">
+    <h2>Add a New Person</h2>
+
+    <form method="POST" id="add-person-form">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="id_name">Name:</label>
+            {{ form.name }}
+        </div>
+
+        <button type="submit" class="form-button">Add Person</button>
+    </form>
+</div>
+{% endblock %}

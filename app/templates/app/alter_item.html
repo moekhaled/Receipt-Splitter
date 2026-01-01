@@ -1,0 +1,41 @@
+{% extends "app/base.html" %}
+
+{% block title %}Alter Item{% endblock %}
+
+{% block content %}
+<div id="alter-item-container">
+
+    <h2>Alter Item: {{ item.name }}</h2>
+    <p class="muted-text">For {{ item.person.name }}</p>
+
+    <form method="POST" id="alter-item-form">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="id_name">Name</label>
+            {{ form.name }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_price">Price</label>
+            {{ form.price }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_quantity">Quantity</label>
+            {{ form.quantity }}
+        </div>
+
+        <div class="edit-actions">
+            <button type="submit" class="form-button">
+                Save
+            </button>
+
+            <a href="{% url 'delete-item' item.pk %}" class="danger-button">
+                Delete Item
+            </a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

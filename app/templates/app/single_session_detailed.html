@@ -1,0 +1,62 @@
+{% extends "app/base.html" %}
+
+{% block title %}{{ session.title }} – Detailed Breakdown{% endblock %}
+
+{% block header_extras %}
+<a href="{% url 'session-details' session.pk %}" class="nav-button secondary">
+    Back to Summary
+</a>
+{% endblock %}
+
+{% block content %}
+
+<h2 class="page-title">{{ session.title }}</h2>
+<h3 class="page-subtitle">Grand Total: {{session.total}} </h3>
+<p class="page-subtitle">Detailed breakdown per person</p>
+
+
+<section id="detailed-session">
+
+    {% for person in session.persons.all %}
+    <div class="person-card">
+
+        <!-- Person header -->
+        <div class="person-header">
+            <h3>{{ person.name }}</h3>
+            <span class="person-total">
+                Total Taxed: {{ person.calculate_taxed_amount }}
+            </span>
+        </div>
+
+        <!-- Items table -->
+        {% if person.items.exists %}
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in person.items.all %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.price }}</td>
+                    <td>{{ item.total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p class="empty-items">No items added.</p>
+        {% endif %}
+
+    </div>
+    {% endfor %}
+
+</section>
+
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "app/base.html" %}
+
+{% block title %}All Sessions{% endblock %}
+
+{% block content %}
+<h2 style="text-align:center; margin-top:30px;">All Sessions</h2>
+
+<div style="text-align:center; margin-bottom:20px;">
+    <a href="{% url 'add-session' %}" class="nav-button">
+        + New Session
+    </a>
+</div>
+
+{% if sessions %}
+<table id="sessions-table">
+    <thead>
+        <tr>
+            <th>Session Name</th>
+            <th>Created At</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for session in sessions %}
+        <tr>
+            <td>
+                <a href="{% url 'session-details' session.pk %}">
+                    {{ session.title }}
+                </a>
+            </td>
+            <td>{{ session.created_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="text-align:center;">No sessions yet.</p>
+{% endif %}
+{% endblock %}
