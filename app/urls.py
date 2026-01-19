@@ -34,4 +34,9 @@ urlpatterns = [
     path('sessions/<int:session_pk>/persons/<int:person_pk>/add-item/', views.AddItemView.as_view(), name='add-item'),
     path('items/<int:pk>/alter/', views.AlterItemView.as_view(), name='alter-item'),
     path('items/<int:pk>/delete/', views.ItemDeleteView.as_view(), name='delete-item'),
+
+    # AI Assistant
+    path("ai/parse/", views.ai_parse, name="ai-parse"),
+    path("ai/csrf/", views.ai_csrf, name="ai-csrf"),
+
 ]

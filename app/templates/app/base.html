@@ -1,4 +1,6 @@
 {% load static %}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,6 +9,52 @@
     <title>{% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'app/styles.css' %}">
 </head>
+
+<!-- AI Assistant -->
+<div id="ai-assistant" class="ai-assistant" data-open="false">
+  <button id="ai-toggle" class="ai-toggle" aria-label="Open AI Assistant" aria-expanded="false">
+    ✨
+  </button>
+
+  <!-- dim background on mobile -->
+  <div id="ai-overlay" class="ai-overlay" hidden></div>
+
+  <div
+    id="ai-panel"
+    class="ai-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="ai-title"
+    aria-hidden="true"
+  >
+    <div id="ai-header" class="ai-header">
+      <span id="ai-title" class="ai-title">AI Assistant</span>
+      <button id="ai-close" class="ai-close" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div id="ai-messages" class="ai-messages">
+      <div class="ai-message">
+        
+        {% include "app/_ai_messages.html" with history=request.session.ai_chat_history %}
+
+      </div>
+    </div>
+
+    <form id="ai-form" class="ai-form" data-ai-url="{% url 'ai-parse' %}"
+      data-session-id="{% if session %}{{ session.pk }}{% endif %}">
+      {% csrf_token %}  
+      <textarea
+        id="ai-input"
+        class="ai-input"
+        placeholder="Create a new receipt with 14% VAT..."
+        rows="2"
+      ></textarea>
+      <button class="ai-send" type="submit">Send</button>
+    </form>
+  </div>
+</div>
+
+
 <body>
 
 
@@ -21,5 +69,125 @@
     {% block content %}{% endblock %}
 </main>
 
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // =========================
+  // AI Assistant Elements
+  // =========================
+  const toggleBtn = document.getElementById("ai-toggle");
+  const panel = document.getElementById("ai-panel");
+  const closeBtn = document.getElementById("ai-close");
+  const form = document.getElementById("ai-form");
+  const input = document.getElementById("ai-input");
+  const messages = document.getElementById("ai-messages");
+  
+  // ✅ CHANGED: read URL from data attribute (already in your HTML)
+  const aiUrl = form?.dataset.aiUrl;
+
+  // ✅ ADDED: helper to keep code DRY
+  const scrollToBottom = () => {
+    messages.scrollTop = messages.scrollHeight;
+  };
+
+  // ✅ ADDED: helper to append chat bubbles
+  const addMessage = (text, who = "bot") => {
+    const bubble = document.createElement("div");
+    bubble.classList.add("ai-message", who);
+    bubble.textContent = text;
+    messages.appendChild(bubble);
+    scrollToBottom();
+    return bubble;
+  };
+
+  // ✅ ADDED: read CSRF token from the hidden form input
+  const getCsrfToken = () =>
+    document.querySelector('#ai-form input[name="csrfmiddlewaretoken"]')?.value || "";
+
+  // ✅ ADDED: prime CSRF cookie for fresh browsers (mobile)
+  fetch("{% url 'ai-csrf' %}", { credentials: "same-origin" });
+
+  // =========================
+  // Panel Open / Close
+  // =========================
+  toggleBtn?.addEventListener("click", () => {
+    panel.classList.toggle("open");
+    if (panel.classList.contains("open")) input?.focus();
+  });
+
+  closeBtn?.addEventListener("click", () => {
+    panel.classList.remove("open");
+  });
+
+  // =========================
+  // Submit Handler
+  // =========================
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const text = input.value.trim();
+    if (!text) return;
+
+    // ✅ CHANGED: use helper
+    addMessage(text, "user");
+
+    // ✅ CHANGED: clear input immediately
+    input.value = "";
+
+    // ✅ ADDED: simple loading bubble
+    const loadingBubble = addMessage("🤖 Thinking...", "bot");
+    const payload = { prompt: text };
+    const sessionId = form.dataset.sessionId;
+    if (sessionId) payload.context = { session_id: Number(sessionId) };
+
+    try {
+      const csrfToken = getCsrfToken();
+
+      const response = await fetch(aiUrl, {
+        method: "POST",
+        credentials: "same-origin", // ✅ ADDED: important for CSRF cookie on mobile
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (_) {
+        // response isn't JSON
+      }
+
+      // ✅ ADDED: remove loading bubble before showing final message
+      loadingBubble.remove();
+
+      if (!response.ok) {
+        addMessage(data.response || `❌ Request failed (${response.status})`, "bot");
+        return;
+      }
+
+      addMessage(data.response || "Sorry, I couldn’t process that.", "bot");
+
+      // ✅ ADDED: optional redirect support (if backend returns it)
+      if (data.action === "redirect" && data.redirect_url) {
+        window.location.href = data.redirect_url;
+      }
+
+    } catch (err) {
+      console.error(err);
+      // ✅ ADDED: remove loading bubble if request failed
+      loadingBubble.remove();
+      addMessage("❌ Error sending request. Try again.", "bot");
+    }
+  });
+
+});
+</script>
+
+
+
 </body>
+
 </html>
+

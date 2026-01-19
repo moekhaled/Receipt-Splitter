@@ -5,8 +5,25 @@ from django.views.generic import ListView,DetailView,RedirectView
 from django.views.generic.edit import CreateView,UpdateView, DeleteView
 from .models import Person,Item,Session
 from django.urls import reverse_lazy
+import json
+from django.http import JsonResponse
+from .ai.llm import parse_receipt_prompt
+from django.views.decorators.http import require_POST
+from .ai.validation import validate_create_session_payload,validate_edit_session_payload
+from .ai.services import execute_create_session, execute_edit_session
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_GET
+from django.conf import settings
+from django.template.loader import render_to_string
+
+
+
 
 # Create your views here.
+@require_GET
+@ensure_csrf_cookie  # ✅ this forces csrftoken cookie to be set on the response
+def ai_csrf(request):
+    return JsonResponse({"ok": True})
 class HomeView(RedirectView):
     url = reverse_lazy('all-sessions')    
 class PersonsView(ListView):
@@ -145,7 +162,7 @@ class AddSessionView(CreateView):
     template_name = 'app/add_session.html'
 
     def get_success_url(self):
-        return reverse_lazy('all-sessions')
+        return reverse_lazy('session-details', kwargs={'pk': self.object.pk})
 class EditSessionView(UpdateView):
     model = Session
     template_name = "app/edit_session.html"
@@ -172,3 +189,152 @@ class SessionDetailDetailedView(DetailView):
             .prefetch_related('items')
         )
         return context
+
+# =========================================================
+# AI Assistant
+# =========================================================
+CHAT_KEY = "ai_chat_history"
+MAX_TURNS = 30
+MAX_CHARS = 2000
+
+
+def get_history(request):
+    # centralized history access
+    return request.session.get(CHAT_KEY, [])
+
+
+def save_history(request, history):
+    # centralized trimming + session update
+    request.session[CHAT_KEY] = history[-MAX_TURNS:]
+    request.session.modified = True
+
+
+def add_turn(request, role, content):
+    # centralized sanitizing + trimming (prevents duplication bugs)
+    content = (content or "").strip()
+    if not content:
+        return
+    history = get_history(request)
+    history.append({"role": role, "content": content[:MAX_CHARS]})
+    save_history(request, history)
+
+
+def render_history_html(request):
+    # render chat from session (server is source of truth)
+    return render_to_string(
+        "app/_ai_messages.html",
+        {"history": get_history(request)},
+        request=request,
+    )
+
+
+def reply(request, message, *, status=200, action="none", redirect_url=None):
+    add_turn(request, "assistant", message)
+
+    payload = {
+        "response": message,
+        "action": action,
+        "html": render_history_html(request), 
+    }
+    if redirect_url:
+        payload["redirect_url"] = redirect_url
+
+    return JsonResponse(payload, status=status)
+
+
+@require_POST
+def ai_parse(request):
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        prompt = (data.get("prompt") or "").strip()
+        if not prompt:
+            return JsonResponse(
+                {"response": "Please type something.", "action": "none", "html": render_history_html(request)},
+                status=400,
+            )
+
+        # store user prompt ONCE immediately for all intents/errors
+        add_turn(request, "user", prompt)
+
+
+        ai_data = parse_receipt_prompt(prompt, history=get_history(request))
+
+        if not ai_data:
+            return reply(
+                request,
+                "I couldn’t understand that. Try asking a question or describing a receipt.",
+                status=400,
+            )
+
+        intent = (ai_data.get("intent") or "").strip()
+
+        # ✅ kept: session_id fallback for edit_session (from context)
+        ctx = data.get("context") or {}
+        ctx_session_id = ctx.get("session_id")
+        if intent == "edit_session" and not ai_data.get("session_id") and ctx_session_id:
+            ai_data["session_id"] = ctx_session_id
+
+        # =========================
+        # Intent: general_inquiry
+        # =========================
+        if intent == "general_inquiry":
+            response_text = ai_data.get("answer", "Sure — what would you like to know?")
+            # reply() (stores assistant + returns html consistently)
+            return reply(request, response_text, action="none")
+
+        # =========================
+        # Intent: create_session
+        # =========================
+        if intent == "create_session":
+            result = validate_create_session_payload(ai_data)
+            if not result.ok:
+                return reply(request, "❌ " + " | ".join(result.errors), status=400)
+
+            exec_result = execute_create_session(result.data)
+            return reply(
+                request,
+                exec_result["message"],
+                action="redirect",
+                redirect_url=exec_result["redirect_url"],
+            )
+
+        # =========================
+        # Intent: edit_session
+        # =========================
+        if intent == "edit_session":
+            edit_result = validate_edit_session_payload(ai_data)
+            if not edit_result.ok:
+                return reply(request, "❌ " + " | ".join(edit_result.errors), status=400)
+
+            try:
+                exec_result = execute_edit_session(edit_result.data)
+            except ValueError as ve:
+                return reply(request, f"❌ {ve}", status=400)
+
+            return reply(
+                request,
+                exec_result["message"],
+                action="redirect",
+                redirect_url=exec_result["redirect_url"],
+            )
+
+        # =========================
+        # Unknown intent fallback
+        # =========================
+        return reply(
+            request,
+            "I wasn’t sure what you meant. Ask me what I can do, or tell me to create a receipt.",
+            status=400,
+        )
+
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"response": "Invalid JSON payload.", "action": "none", "html": render_history_html(request)},
+            status=400,
+        )
+    except Exception as e:
+        msg = f"{type(e).__name__}: {e}" if settings.DEBUG else "Error processing your request."
+        return JsonResponse(
+            {"response": msg, "action": "none", "html": render_history_html(request)},
+            status=400,
+        )

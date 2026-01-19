@@ -797,3 +797,263 @@ h2 {
     color: #888;
     font-style: italic;
 }
+/* =========================
+   AI Assistant Widget
+   ========================= */
+
+#ai-assistant {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  font-family: inherit;
+}
+
+/* Floating button */
+#ai-toggle {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: none;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#ai-toggle:hover {
+  background: #4338ca;
+}
+
+/* Overlay (exists in your HTML) */
+#ai-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 9998;
+}
+
+/* Panel (desktop: anchored to button) */
+#ai-panel {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  width: 320px;
+  max-height: 420px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+
+  display: none; /* hidden by default */
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#ai-panel.open {
+  display: flex;
+}
+
+/* Header */
+#ai-header {
+  background: #f3f4f6;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+}
+
+#ai-title {
+  font-size: 14px;
+}
+
+#ai-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+
+  /* Tap-friendly */
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Messages */
+#ai-messages {
+  padding: 12px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Message bubbles */
+.ai-message {
+  padding: 8px 12px;
+  border-radius: 14px;
+  max-width: 85%;
+  word-wrap: break-word;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ai-message.bot {
+  background: #e5e7eb;
+  color: #111827;
+  align-self: flex-start;
+}
+
+.ai-message.user {
+  background: #4f46e5;
+  color: #fff;
+  align-self: flex-end;
+}
+
+/* Input area */
+#ai-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+
+  /* iPhone safe-area */
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+#ai-input {
+  flex: 1;
+  resize: none;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-family: inherit;
+
+  /* 16px prevents iOS zoom-on-focus */
+  font-size: 16px;
+
+  outline: none;
+  min-height: 44px;
+}
+
+#ai-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+#ai-form button {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0 14px;
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#ai-form button:hover {
+  background: #4338ca;
+}
+
+/* =========================
+   Mobile: bottom sheet look
+   ========================= */
+@media (max-width: 420px) {
+  #ai-assistant {
+    bottom: 12px;
+    right: 12px;
+  }
+
+  /* Slightly smaller button on phone */
+  #ai-toggle {
+    width: 46px;
+    height: 46px;
+    font-size: 20px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  }
+
+  /* Turn panel into a modern bottom sheet (NOT full-ugly width) */
+  #ai-panel {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+
+    width: auto;
+    height: min(78dvh, 560px);
+    max-height: none;
+
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Header looks lighter on mobile */
+  #ai-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 10px 12px;
+  }
+
+  #ai-title {
+    font-size: 14px;
+  }
+
+  #ai-close {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
+
+  /* Messages slightly tighter */
+  #ai-messages {
+    padding: 10px 10px 8px;
+    gap: 6px;
+    background: #f9fafb;
+  }
+
+  .ai-message {
+    font-size: 13px;
+    line-height: 1.35;
+    padding: 8px 10px;
+    max-width: 90%;
+  }
+
+  #ai-form {
+    padding: 10px;
+  }
+
+  #ai-input {
+    min-height: 42px;
+    border-radius: 12px;
+  }
+
+  #ai-form button {
+    min-height: 42px;
+    font-size: 14px;
+    border-radius: 12px;
+    padding: 0 12px;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 360px) {
+  #ai-panel {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    height: 76dvh;
+  }
+}
