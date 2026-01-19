@@ -39,6 +39,9 @@ The app includes an AI endpoint that accepts natural language and returns a stru
 1. **General questions** about the app (“what can you do?”, “how does VAT work?”)
 2. **Create a session** from a prompt (optionally with people + items)
 3. **Edit a session** (title / VAT / service / discount)
+4. **Edit people inside a session** (add / rename / delete)
+5. **Edit items inside a session** (add / update / delete / move between people)
+6. **Batch editing (multi-operations)**: apply multiple people/items edits in a single prompt (e.g., add a person + add items + rename someone)
 
 ### How it works
 - The assistant is powered by **Google Gemini** via `google-genai`.
@@ -82,7 +85,7 @@ Returns:
 
 Notes:
 - Chat history is stored server-side in the Django session (trimmed to a max number of turns + max chars per message).
-- If intent is `edit_session` and `session_id` isn’t provided by the model, the server can fall back to `context.session_id` (when available).
+- If intent requires a session id and it isn’t provided by the model, the server can fall back to `context.session_id` (when available).
 
 ---
 
@@ -140,12 +143,49 @@ The AI is constrained to one of these intents:
 }
 ```
 
+### `edit_person`
+```json
+{
+  "intent": "edit_person",
+  "session_id": 12,
+  "operation": "rename",
+  "person_id": 55,
+  "new_name": "Moe"
+}
+```
+
+### `edit_item`
+```json
+{
+  "intent": "edit_item",
+  "session_id": 12,
+  "operation": "update",
+  "item_id": 901,
+  "updates": { "quantity": 2 }
+}
+```
+
+### `edit_session_entities` (batch operations)
+```json
+{
+  "intent": "edit_session_entities",
+  "session_id": 12,
+  "operations": [
+    { "intent": "edit_person", "operation": "add", "new_name": "Saaeed" },
+    { "intent": "edit_item", "operation": "add", "to_person_id": 55, "name": "Pepsi", "price": 30, "quantity": 2 },
+    { "intent": "edit_person", "operation": "rename", "person_id": 10, "new_name": "Moe" }
+  ]
+}
+```
+
 Validation rules enforced server-side:
 - VAT/service/discount must be between **0–100**
 - Item price must be **> 0**
 - Quantity must be **>= 1** (defaults to 1)
 - `create_session` requires **at least 1 person**
 - `edit_session` requires either `session_id` or `session_query`, plus at least one field in `updates`
+- `edit_person` / `edit_item` enforce required fields per operation
+- Batch operations require a non-empty `operations[]` list, and each operation must validate independently
 
 ---
 
