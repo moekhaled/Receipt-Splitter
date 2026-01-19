@@ -29,14 +29,14 @@ def to_gemini_contents(history):
         contents.append(types.Content(role=role, parts=[types.Part(text=m["content"])]))
     return contents
 
-def parse_receipt_prompt(user_prompt: str, history=None) -> Dict[str, Any]:
+def parse_receipt_prompt(user_prompt: str, history=None, *, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Returns a dict that matches one of the existing schemas, or {} if invalid.
     """
     user_prompt = (user_prompt or "").strip()
     if not user_prompt:
         return {}
-
+    
     # Choose a fast, good default model; you can change later.
     # Docs show 'gemini-2.5-flash' commonly in examples. :contentReference[oaicite:2]{index=2}
     model_id = "gemini-3-flash-preview"
@@ -45,7 +45,7 @@ def parse_receipt_prompt(user_prompt: str, history=None) -> Dict[str, Any]:
         model=model_id,
         contents=contents,
         config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,          # system prompt :contentReference[oaicite:3]{index=3}
+            system_instruction=SYSTEM_PROMPT + ("\n\nCURRENT_SESSION_CONTEXT_JSON:\n" + json.dumps(context, ensure_ascii=False) ) if context else "" ,          # system prompt 
             temperature=0.1,
             response_mime_type="application/json",     # JSON mode :contentReference[oaicite:4]{index=4}
             response_json_schema=AIAction.model_json_schema(),  # schema :contentReference[oaicite:5]{index=5}
@@ -60,6 +60,6 @@ def parse_receipt_prompt(user_prompt: str, history=None) -> Dict[str, Any]:
     # Validate strictly (ensures your DB logic gets clean data)
     try:
         validated = AIAction.model_validate(data)
-        return validated.root.model_dump()
+        return validated.root.model_dump(exclude_none=True)
     except Exception:
         return {}

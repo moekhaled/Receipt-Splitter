@@ -9,8 +9,8 @@ import json
 from django.http import JsonResponse
 from .ai.llm import parse_receipt_prompt
 from django.views.decorators.http import require_POST
-from .ai.validation import validate_create_session_payload,validate_edit_session_payload
-from .ai.services import execute_create_session, execute_edit_session
+from .ai.validation import validate_create_session_payload,validate_edit_session_payload,validate_edit_person_payload,validate_edit_item_payload,validate_edit_session_entities_payload
+from .ai.services import execute_create_session, execute_edit_session,execute_edit_person,execute_edit_item,execute_edit_session_entities
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 from django.conf import settings
@@ -241,6 +241,30 @@ def reply(request, message, *, status=200, action="none", redirect_url=None):
 
     return JsonResponse(payload, status=status)
 
+def build_session_context(session_id: int) -> dict:
+    people = (
+        Person.objects
+        .filter(session_id=session_id)
+        .prefetch_related("items")
+        .order_by("id")
+    )
+
+    return {
+        "session_id": session_id,
+        "people": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "items": [
+                    {"id": it.id, "name": it.name, "price": float(it.price), "quantity": it.quantity}
+                    for it in p.items.all().order_by("id")
+                ],
+            }
+            for p in people
+        ],
+    }
+
+
 
 @require_POST
 def ai_parse(request):
@@ -255,9 +279,10 @@ def ai_parse(request):
 
         # store user prompt ONCE immediately for all intents/errors
         add_turn(request, "user", prompt)
+        session_id = data.get("context", {}).get("session_id")
+        context = build_session_context(session_id)
 
-
-        ai_data = parse_receipt_prompt(prompt, history=get_history(request))
+        ai_data = parse_receipt_prompt(prompt, history=get_history(request),context=context)
 
         if not ai_data:
             return reply(
@@ -271,7 +296,7 @@ def ai_parse(request):
         # ✅ kept: session_id fallback for edit_session (from context)
         ctx = data.get("context") or {}
         ctx_session_id = ctx.get("session_id")
-        if intent == "edit_session" and not ai_data.get("session_id") and ctx_session_id:
+        if intent in {"edit_session", "edit_person", "edit_item", "edit_session_entities"} and not ai_data.get("session_id") and ctx_session_id:
             ai_data["session_id"] = ctx_session_id
 
         # =========================
@@ -317,6 +342,62 @@ def ai_parse(request):
                 action="redirect",
                 redirect_url=exec_result["redirect_url"],
             )
+        # =========================
+        # Intent: edit_person
+        # =========================
+        if intent == "edit_person":
+            result = validate_edit_person_payload(ai_data)
+            if not result.ok:
+                return reply(request, "\n".join(result.errors), status=400)
+
+            exec_result = execute_edit_person(result.data)
+            if not exec_result.get("ok"):
+                return reply(request, exec_result["message"], status=400)
+
+            return reply(
+                request,
+                exec_result["message"],
+                action="redirect",
+                redirect_url=exec_result["redirect_url"],
+            )
+        # =========================
+        # Intent: edit_item
+        # =========================
+        if intent == "edit_item":
+            result = validate_edit_item_payload(ai_data)
+            if not result.ok:
+                return reply(request, "\n".join(result.errors), status=400)
+
+            exec_result = execute_edit_item(result.data)
+            if not exec_result.get("ok"):
+                return reply(request, exec_result["message"], status=400)
+
+            return reply(
+                request,
+                exec_result["message"],
+                action="redirect",
+                redirect_url=exec_result["redirect_url"],
+            )
+
+        # =========================
+        # Intent: edit_session_entities
+        # =========================
+        if intent == "edit_session_entities":
+            result = validate_edit_session_entities_payload(ai_data)
+            if not result.ok:
+                return reply(request, "\n".join(result.errors), status=400)
+
+            exec_result = execute_edit_session_entities(result.data)
+            if not exec_result.get("ok"):
+                return reply(request, exec_result["message"], status=400)
+
+            return reply(
+                request,
+                exec_result["message"],
+                action="redirect",
+                redirect_url=exec_result["redirect_url"],
+            )
+
 
         # =========================
         # Unknown intent fallback

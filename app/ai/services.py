@@ -6,6 +6,8 @@ from django.urls import reverse
 from django.db.models import Q
 from app.models import Session
 import re
+from typing import Optional
+
 
 
 
@@ -160,4 +162,178 @@ def execute_edit_session(payload: Dict[str, Any]) -> Dict[str, Any]:
         "session_id": session.pk,
         "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
         "message": msg,
+    }
+
+def execute_edit_person(data: Dict[str, Any]) -> Dict[str, Any]:
+    session_id = data["session_id"]
+    operation = data["operation"]
+
+    # Ensure session exists
+    session = Session.objects.filter(id=session_id).first()
+    if not session:
+        return {"ok": False, "message": "I couldn’t find that receipt/session."}
+
+    if operation == "add":
+        p = Person.objects.create(session=session, name=data["new_name"])
+        return {
+            "ok": True,
+            "message": f"Added {p.name}.",
+            "redirect_url": reverse("session-details", kwargs={"pk": session.id}),
+            "created_person_id": p.id,
+        }
+
+    if operation == "rename":
+        p = Person.objects.filter(id=data["person_id"], session=session).first()
+        if not p:
+            return {"ok": False, "message": "I couldn’t find that person in this session."}
+        old = p.name
+        p.name = data["new_name"]
+        p.save(update_fields=["name"])
+        return {
+            "ok": True,
+            "message": f"Renamed {old} → {p.name}.",
+            "redirect_url": reverse("session-details", kwargs={"pk": session.id}),
+        }
+
+    if operation == "delete":
+        p = Person.objects.filter(id=data["person_id"], session=session).first()
+        if not p:
+            return {"ok": False, "message": "I couldn’t find that person in this session."}
+        name = p.name
+        p.delete()
+        return {
+            "ok": True,
+            "message": f"Deleted {name}.",
+            "redirect_url": reverse("session-details", kwargs={"pk": session.id}),
+        }
+
+    return {"ok": False, "message": "Unsupported edit_person operation."}
+
+def get_session(session_id: int) -> Optional[Session]:
+    return Session.objects.filter(pk=session_id).first()
+
+def get_person_in_session(session_id: int, person_id: int) -> Optional[Person]:
+    return Person.objects.filter(pk=person_id, session_id=session_id).first()
+
+def get_item_in_session(session_id: int, item_id: int) -> Optional[Item]:
+    item = (
+        Item.objects
+        .select_related("person", "person__session")
+        .filter(pk=item_id)
+        .first()
+    )
+    if not item:
+        return None
+    return item if item.person.session_id == session_id else None
+
+def execute_edit_item(payload: dict) -> dict:
+
+    session_id = payload["session_id"]
+    operation = payload["operation"]
+
+    session = get_session(session_id)
+    if not session:
+        return {"ok": False, "message": "I couldn’t find that session."}
+
+    if operation == "add":
+        person = get_person_in_session(session_id, payload["to_person_id"])
+        if not person:
+            return {"ok": False, "message": "I couldn’t find that person in this session."}
+
+        item = Item.objects.create(
+            person=person,
+            name=payload["name"],
+            price=payload["price"],
+            quantity=payload["quantity"],
+        )
+        return {
+            "ok": True,
+            "message": f"✅ Added {item.name} to {person.name}.",
+            "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+        }
+
+    if operation == "update":
+        item = get_item_in_session(session_id, payload["item_id"])
+        if not item:
+            return {"ok": False, "message": "I couldn’t find that item in this session."}
+
+        updates = payload["updates"]
+        if "name" in updates: item.name = updates["name"]
+        if "price" in updates: item.price = updates["price"]
+        if "quantity" in updates: item.quantity = updates["quantity"]
+        item.save()
+
+        return {
+            "ok": True,
+            "message": "✅ Updated item.",
+            "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+        }
+
+    if operation == "delete":
+        item = get_item_in_session(session_id, payload["item_id"])
+        if not item:
+            return {"ok": False, "message": "I couldn’t find that item in this session."}
+        item.delete()
+        return {
+            "ok": True,
+            "message": "✅ Deleted item.",
+            "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+        }
+
+    if operation == "move":
+        item = get_item_in_session(session_id, payload["item_id"])
+        if not item:
+            return {"ok": False, "message": "I couldn’t find that item in this session."}
+
+        new_owner = get_person_in_session(session_id, payload["to_person_id"])
+        if not new_owner:
+            return {"ok": False, "message": "I couldn’t find the target person in this session."}
+
+        item.person = new_owner
+        item.save(update_fields=["person"])
+        return {
+            "ok": True,
+            "message": "✅ Moved item.",
+            "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+        }
+
+    return {"ok": False, "message": "Unsupported edit_item operation."}
+
+def execute_edit_session_entities(payload: Dict[str, Any]) -> Dict[str, Any]:
+    session_id = payload["session_id"]
+    ops = payload["operations"]
+    created_people = {}
+
+
+    messages: List[str] = []
+
+    # Stop on first failure (safest behavior)
+    for idx, op in enumerate(ops, start=1):
+        op_intent = op.get("intent")
+
+        if op_intent == "edit_person":
+            res = execute_edit_person(op)
+            if res.get("ok") and op.get("operation") == "add" and op.get("ref"):
+                created_people[op["ref"]] = res.get("created_person_id")
+        elif op_intent == "edit_item":
+            if op.get("to_person_ref") and not op.get("to_person_id"):
+                ref = op["to_person_ref"]
+                if ref not in created_people:
+                    return {"ok": False, "message": f"❌ Failed at op #{idx}: unknown to_person_ref '{ref}'."}
+                op = {**op, "to_person_id": created_people[ref]}
+            res = execute_edit_item(op)
+        else:
+            return {"ok": False, "message": f"Unsupported operation intent at #{idx}."}
+
+        if not res.get("ok"):
+            prefix = "\n".join(messages).strip()
+            msg = (prefix + "\n" if prefix else "") + f"❌ Failed at op #{idx}: {res.get('message')}"
+            return {"ok": False, "message": msg}
+
+        messages.append(res.get("message", f"✅ Operation #{idx} done."))
+
+    return {
+        "ok": True,
+        "message": "\n".join(messages),
+        "redirect_url": reverse("session-details", kwargs={"pk": session_id}),
     }

@@ -38,7 +38,56 @@ class EditSessionAction(BaseModel):
     # Fallback if no session_id is provided (user typed a name)
     session_query: Optional[str] = None
     updates: EditSessionFields
+class EditPersonAction(BaseModel):
+    intent: Literal["edit_person"]
+
+    # frontend/server context
+    session_id: Optional[int] = None
+
+    operation: Literal["add", "rename", "delete"]
+
+    # required for rename/delete
+    person_id: Optional[int] = Field(default=None, gt=0)
+
+    # required for add/rename
+    new_name: Optional[str] = Field(default=None, min_length=1)
+    ref: Optional[str] = Field(default=None, min_length=1, max_length=32)
+
+class EditItemUpdates(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1)
+    price: Optional[float] = Field(default=None, gt=0)
+    quantity: Optional[int] = Field(default=None, ge=1)
+
+class EditItemAction(BaseModel):
+    intent: Literal["edit_item"]
+
+    # provided by frontend context or inferred by model from context JSON
+    session_id: Optional[int] = None
+
+    operation: Literal["add", "update", "delete", "move"]
+
+    # for update/delete/move
+    item_id: Optional[int] = None
+
+    # for add/move
+    to_person_id: Optional[int] = None
+    #Temp ref pointing to a person created earlier in same batch
+    to_person_ref: Optional[str] = Field(default=None, min_length=1, max_length=32)
+    # for add
+    name: Optional[str] = None
+    price: Optional[float] = None
+    quantity: Optional[int] = Field(default=None, ge=1)
+
+    # for update
+    updates: Optional[EditItemUpdates] = None
+OperationAction = Union[EditPersonAction, EditItemAction]
+
+class EditSessionEntitiesAction(BaseModel):
+    intent: Literal["edit_session_entities"]
+    session_id: Optional[int] = None
+    operations: List[OperationAction] = Field(default_factory=list, min_length=1)
+
 
 # ✅ IMPORTANT: RootModel wrapper so we can generate JSON schema + validate
-class AIAction(RootModel[Union[CreateSessionAction, GeneralInquiryAction, EditSessionAction]]):
+class AIAction(RootModel[Union[CreateSessionAction, GeneralInquiryAction, EditSessionAction,EditPersonAction, EditItemAction,EditSessionEntitiesAction]]):
     pass

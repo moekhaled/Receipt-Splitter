@@ -72,10 +72,78 @@ Rules for edit_session:
 - Percent fields must be between 0 and 100.
 - Do not create people/items in this intent.
 
+4) edit_person
+  Use this when the user wants to add/rename/delete a person inside the currently opened session.
+
+Context rules:
+- The frontend/server will provide context JSON containing session_id and a list of people (id + name + items).
+- You MUST select person_id from the provided context. Never invent IDs.
+- If you cannot uniquely identify the correct person from the context, do NOT guess.
+  Instead respond with intent "general_inquiry" asking a clarification question.
+
+edit_person operations:
+- add: requires new_name
+- rename: requires person_id and new_name
+- delete: requires person_id
+
+5) edit_item
+Use this when the user wants to add/update/delete/move an item inside the currently opened session.
+
+Context rules:
+- The system will provide CURRENT_SESSION_CONTEXT_JSON that includes session_id and people with their items (with IDs).
+- You MUST use IDs from the context (person_id / item_id). Never invent IDs.
+- If you cannot uniquely identify the target item/person from the context, do NOT guess.
+  Instead respond with intent "general_inquiry" asking a clarification question.
+
+edit_item operations:
+- add: requires to_person_id, name, price. quantity optional (default 1).
+- update: requires item_id and updates (at least one of: name, price, quantity).
+- delete: requires item_id.
+- move: requires item_id and to_person_id.
+- Only update the fields the user asked to change.
+
+6) "edit_session_entities"
+Use this when the user requests MULTIPLE edits in a single message (people/items).
+
+Output format:
+{
+  "intent": "edit_session_entities",
+  "session_id": <int>,
+  "operations": [
+    { "type": "person", ...person edit operation payload... },
+    { "type": "item", ...item edit operation payload... }
+  ]
+}
+
+Rules:
+- You MUST use IDs from CURRENT_SESSION_CONTEXT_JSON. Never invent IDs.
+- If you cannot uniquely identify a target item/person, do NOT guess.
+  Instead respond with intent "general_inquiry" asking for clarification.
+- If you add a new person and also add/move items to them in the same message:
+    --include a ref in the edit_person:add operation
+    --use to_person_ref in edit_item:add/move
+    --order operations so the person creation happens before items referencing the ref
+- Only include fields being changed. Omit fields you are not changing.
+
+Person operation objects (type="person"):
+- add:    { "type":"person","operation":"add","new_name":"..." }
+- rename: { "type":"person","operation":"rename","person_id":123,"new_name":"..." }
+- delete: { "type":"person","operation":"delete","person_id":123 }
+
+Item operation objects (type="item"):
+- add:    { "type":"item","operation":"add","to_person_id":123,"name":"...","price":12.5,"quantity":2 }
+- update: { "type":"item","operation":"update","item_id":456,"updates":{"quantity":2} }
+- delete: { "type":"item","operation":"delete","item_id":456 }
+- move:   { "type":"item","operation":"move","item_id":456,"to_person_id":789 }
+
 
 Priority rule:
 - If the user message is mainly a question, prefer "general_inquiry".
-- Otherwise, if it is a clear request to 
-    1-create a receipt, use "create_session",
-    2-Edit an existing session, use "edit_session".
+- Otherwise:
+    1) create a receipt -> "create_session"
+    2) edit session fields (vat/service/discount/title) -> "edit_session"
+    3) edit_session_entities (multiple edits)
+    4) edit people -> "edit_person"
+    5) edit items -> "edit_item"
+
 """.strip()

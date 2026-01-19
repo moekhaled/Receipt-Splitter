@@ -80,6 +80,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("ai-form");
   const input = document.getElementById("ai-input");
   const messages = document.getElementById("ai-messages");
+
+  input?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();              // don't insert newline
+      form?.requestSubmit();           // triggers your existing submit handler
+    }
+  });
   
   // ✅ CHANGED: read URL from data attribute (already in your HTML)
   const aiUrl = form?.dataset.aiUrl;

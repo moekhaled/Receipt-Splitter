@@ -242,3 +242,239 @@ def validate_edit_session_payload(ai_data: Dict[str, Any]) -> ValidationResult:
         "updates": updates,
     }
     return ValidationResult(True, normalized, [])
+
+def validate_edit_person_payload(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[str] = []
+
+    session_id = payload.get("session_id")
+    operation = payload.get("operation")
+    person_id = payload.get("person_id")
+    new_name = (payload.get("new_name") or "").strip()
+
+    # ✅ NEW: optional temp ref (only meaningful for add)
+    ref = payload.get("ref")
+    ref = (ref or "").strip() if isinstance(ref, str) else None
+    if ref == "":
+        ref = None
+
+    if not isinstance(session_id, int) or session_id <= 0:
+        errors.append("Missing or invalid session_id.")
+
+    if operation not in {"add", "rename", "delete"}:
+        errors.append("Invalid operation for edit_person.")
+
+    if operation in {"rename", "delete"}:
+        if not isinstance(person_id, int) or person_id <= 0:
+            errors.append("person_id is required for rename/delete.")
+
+    if operation in {"add", "rename"}:
+        if not new_name:
+            errors.append("new_name is required for add/rename.")
+
+    # ✅ NEW: allow ref only for add (ignore it otherwise)
+    if operation != "add":
+        ref = None
+
+    if errors:
+        return ValidationResult(False, {}, errors)
+
+    normalized = {
+        "intent": "edit_person",
+        "session_id": session_id,
+        "operation": operation,
+        "person_id": person_id if operation in {"rename", "delete"} else None,
+        "new_name": new_name if operation in {"add", "rename"} else None,
+        "ref": ref,  # ✅ NEW
+    }
+    return ValidationResult(True, normalized, [])
+
+def validate_edit_item_payload(ai_data: Dict[str, Any]) -> ValidationResult:
+    """
+    Normalizes/validates intent=edit_item.
+    Supports operations: add/update/delete/move
+    """
+    errors: List[str] = []
+
+    if not isinstance(ai_data, dict) or not ai_data:
+        return ValidationResult(False, {}, ["Empty AI output."])
+
+    if _clean_str(ai_data.get("intent")) != "edit_item":
+        return ValidationResult(False, {}, ["Invalid intent for edit item."])
+
+    session_id = _as_int(ai_data.get("session_id"))
+    if not session_id or session_id <= 0:
+        errors.append("Missing session_id (open the session page and try again).")
+
+    operation = _clean_str(ai_data.get("operation"))
+    if operation not in {"add", "update", "delete", "move"}:
+        errors.append("Invalid operation for editing items.")
+
+    item_id = _as_int(ai_data.get("item_id"))
+    to_person_id = _as_int(ai_data.get("to_person_id"))
+
+    to_person_ref = ai_data.get("to_person_ref")
+    to_person_ref = (to_person_ref or "").strip() if isinstance(to_person_ref, str) else None
+
+    if to_person_ref == "":
+        to_person_ref = None
+
+    # Required fields per operation
+    if operation in {"update", "delete", "move"}:
+        if not item_id or item_id <= 0:
+            errors.append("item_id is required for update/delete/move.")
+
+    if operation in {"add", "move"}:
+        valid_id = isinstance(to_person_id, int) and to_person_id > 0
+        valid_ref = isinstance(to_person_ref, str) and len(to_person_ref) > 0
+        if not valid_id and not valid_ref:
+            errors.append("to_person_id or to_person_ref is required for add/move.")
+
+
+    normalized: Dict[str, Any] = {
+        "intent": "edit_item",
+        "session_id": session_id,
+        "operation": operation,
+    }
+
+    # add
+    if operation == "add":
+        name = _clean_str(ai_data.get("name"))
+        price = _as_number(ai_data.get("price"))
+        quantity = _as_int(ai_data.get("quantity"))
+        if quantity is None:
+            quantity = 1
+
+        if not name:
+            errors.append("Item name is required for add.")
+        if price is None or price <= 0:
+            errors.append("Item price must be a number greater than 0.")
+        if not isinstance(quantity, int) or quantity < 1:
+            errors.append("Item quantity must be an integer >= 1.")
+
+        normalized.update({
+            "to_person_id": to_person_id,
+            "to_person_ref": to_person_ref,
+            "name": name,
+            "price": float(price) if price is not None else None,
+            "quantity": quantity,
+        })
+
+    # update
+    if operation == "update":
+        updates_in = ai_data.get("updates") or {}
+        if not isinstance(updates_in, dict):
+            errors.append("updates must be an object.")
+            updates_in = {}
+
+        updates: Dict[str, Any] = {}
+        if "name" in updates_in:
+            nm = _clean_str(updates_in.get("name"))
+            if not nm:
+                errors.append("Updated name cannot be empty.")
+            else:
+                updates["name"] = nm
+
+        if "price" in updates_in:
+            pr = _as_number(updates_in.get("price"))
+            if pr is None or pr <= 0:
+                errors.append("Updated price must be > 0.")
+            else:
+                updates["price"] = float(pr)
+
+        if "quantity" in updates_in:
+            qt = _as_int(updates_in.get("quantity"))
+            if qt is None or qt < 1:
+                errors.append("Updated quantity must be an integer >= 1.")
+            else:
+                updates["quantity"] = qt
+
+        if not updates:
+            errors.append("updates must include at least one of: name, price, quantity.")
+
+        normalized.update({
+            "item_id": item_id,
+            "updates": updates,
+        })
+
+    # delete
+    if operation == "delete":
+        normalized.update({
+            "item_id": item_id,
+        })
+
+    # move
+    if operation == "move":
+        normalized.update({
+            "item_id": item_id,
+            "to_person_id": to_person_id,
+            "to_person_ref": to_person_ref,
+
+        })
+
+    if errors:
+        return ValidationResult(False, {}, errors)
+
+    return ValidationResult(True, normalized, [])
+
+
+def validate_edit_session_entities_payload(ai_data: Dict[str, Any]) -> ValidationResult:
+    errors: List[str] = []
+
+    if not isinstance(ai_data, dict) or not ai_data:
+        return ValidationResult(False, {}, ["Empty AI output."])
+
+    if _clean_str(ai_data.get("intent")) != "edit_session_entities":
+        return ValidationResult(False, {}, ["Invalid intent for edit_session_entities."])
+
+    session_id = _as_int(ai_data.get("session_id"))
+    if not session_id or session_id <= 0:
+        errors.append("Missing session_id (open the session page and try again).")
+
+    ops_in = ai_data.get("operations")
+    if not isinstance(ops_in, list) or not ops_in:
+        errors.append("operations must be a non-empty list.")
+
+    if errors:
+        return ValidationResult(False, {}, errors)
+
+    if len(ops_in) > 15:
+        return ValidationResult(False, {}, ["Too many operations in one request (max 15)."])
+
+    normalized_ops: List[Dict[str, Any]] = []
+
+    for idx, op in enumerate(ops_in, start=1):
+        if not isinstance(op, dict):
+            errors.append(f"Operation #{idx} is not a valid object.")
+            continue
+
+        op_intent = _clean_str(op.get("intent"))
+        if op_intent not in {"edit_person", "edit_item"}:
+            errors.append(f"Operation #{idx}: intent must be edit_person or edit_item.")
+            continue
+
+        # Inject session_id if missing inside the op
+        if not op.get("session_id"):
+            op = {**op, "session_id": session_id}
+
+        if op_intent == "edit_person":
+            r = validate_edit_person_payload(op)
+            if not r.ok:
+                errors.append(f"Operation #{idx} (edit_person): " + " | ".join(r.errors))
+                continue
+            normalized_ops.append(r.data)
+
+        elif op_intent == "edit_item":
+            r = validate_edit_item_payload(op)
+            if not r.ok:
+                errors.append(f"Operation #{idx} (edit_item): " + " | ".join(r.errors))
+                continue
+            normalized_ops.append(r.data)
+
+    if errors:
+        return ValidationResult(False, {}, errors)
+
+    return ValidationResult(
+        True,
+        {"intent": "edit_session_entities", "session_id": session_id, "operations": normalized_ops},
+        [],
+    )
