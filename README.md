@@ -6,6 +6,16 @@ The project focuses on clean, scalable structure using Django CBVs — and now i
 
 ---
 
+## Live Demo
+
+Try the hosted app here: https://receipt-splitter-omvm.onrender.com/
+
+Note: The Render instance may **spin down when idle**. On your first visit it can take up to **~50 seconds** to wake up.
+
+---
+
+---
+
 ## Key Features
 
 ### Core App
