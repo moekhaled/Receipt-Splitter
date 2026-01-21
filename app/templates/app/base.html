@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <form id="ai-form" class="ai-form" data-ai-url="{% url 'ai-parse' %}"
+    <form id="ai-form" class="ai-form" data-ai-url="/ai/parse/"
       data-session-id="{% if session %}{{ session.pk }}{% endif %}">
       {% csrf_token %}  
       <textarea
@@ -60,7 +60,7 @@
 
 <header id="main-header">
     <nav id="main-nav">
-        <a href="{% url 'all-sessions' %}" class="nav-button" >All Sessions</a>
+        <a href="{% url 'all-sessions' %}" class="nav-button" >All Receipts</a>
         {% block header_extras %}{% endblock %}
     </nav>
 </header>
@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector('#ai-form input[name="csrfmiddlewaretoken"]')?.value || "";
 
   // ✅ ADDED: prime CSRF cookie for fresh browsers (mobile)
-  fetch("{% url 'ai-csrf' %}", { credentials: "same-origin" });
+  fetch("/ai/csrf/", { credentials: "same-origin" });
 
   // =========================
   // Panel Open / Close

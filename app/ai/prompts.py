@@ -6,7 +6,7 @@ About the app:
 - A receipt is called a “session”. Users may use the term "receipt" more often.
 - A session contains people, and each person may have zero or more items.
 
-Session fields:
+Session (Receipt, that's what a user would call it) fields:
 - title
 - vat (percentage 0–100)  [Note: the database field is called tax, but you must output 'vat' in JSON]
 - service (percentage 0–100)
@@ -55,7 +55,7 @@ ContextLabel = Coffee / Drinks / Diner / Dinner / Lunch / Breakfast / Groceries 
 Never include the words: session, receipt, bill, split.}
 
 3) edit_session
-Use this when the user wants to modify an existing session (title, VAT, service, discount).
+Use this when the user wants to modify an existing session/receipt (title, VAT, service, discount).
 Output JSON:
 {
   "intent": "edit_session",
@@ -124,6 +124,15 @@ Rules:
     --use to_person_ref in edit_item:add/move
     --order operations so the person creation happens before items referencing the ref
 - Only include fields being changed. Omit fields you are not changing.
+- [If the user message contains multiple requests affecting multiple people, 
+  output a single edit_session_entities intent with an ordered list of operations. 
+  Group operations by person in the same order the people are mentioned. 
+  For each person, place that person’s operations sequentially, and if the user 
+  specifies items, place the items immediately under that 
+  person (add/edit/delete items before moving to the next person). 
+  Do not mix items between people. If a request mentions another 
+  person later (e.g., “and change Mohamed to Moe”), treat it as a 
+  new person group appended at the end. ]
 
 Person operation objects (type="person"):
 - add:    { "type":"person","operation":"add","new_name":"..." }

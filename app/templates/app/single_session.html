@@ -10,8 +10,8 @@
 
 {% block content %}
 <div class="session-header">
-    <h2>Session: {{ session.title }}</h2>
-    <a href="{% url 'edit-session' session.id %}" class="btn btn-primary">Edit Session</a>
+    <h2>Receipt: {{ session.title }}</h2>
+    <a href="{% url 'edit-session' session.id %}" class="btn btn-primary">Edit Receipt</a>
     <a href="{% url 'session-details-detailed' session.pk %}" class="nav-button">View Detailed Breakdown</a>
 
 </div>
@@ -48,7 +48,7 @@
     </p>
 
     {% else %}
-    <p style="text-align:center;">No people yet in this session.</p>
+    <p style="text-align:center;">No people yet in this Receipt.</p>
     {% endif %}
 
 </section>

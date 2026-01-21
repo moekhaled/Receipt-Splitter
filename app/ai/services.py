@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Any, Dict, List
 from django.db import transaction
 from app.models import Session, Person, Item
-from django.urls import reverse
 from django.db.models import Q
 from app.models import Session
 import re
@@ -69,7 +68,7 @@ def execute_create_session(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "session_id": session.pk,
-        "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+        "redirect_url":  f"/sessions/{session.pk}/",
         "message": message,
     }
 
@@ -157,10 +156,10 @@ def execute_edit_session(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     session.save()
 
-    msg = "✅ Updated session: " + ", ".join(changed) if changed else "No changes applied."
+    msg = "✅ Updated receipt: " + ", ".join(changed) if changed else "No changes applied."
     return {
         "session_id": session.pk,
-        "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+        "redirect_url":  f"/sessions/{session.pk}/",
         "message": msg,
     }
 
@@ -178,7 +177,7 @@ def execute_edit_person(data: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "ok": True,
             "message": f"Added {p.name}.",
-            "redirect_url": reverse("session-details", kwargs={"pk": session.id}),
+            "redirect_url":  f"/sessions/{session_id}/",
             "created_person_id": p.id,
         }
 
@@ -192,7 +191,7 @@ def execute_edit_person(data: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "ok": True,
             "message": f"Renamed {old} → {p.name}.",
-            "redirect_url": reverse("session-details", kwargs={"pk": session.id}),
+            "redirect_url":  f"/sessions/{session_id}/",
         }
 
     if operation == "delete":
@@ -204,7 +203,7 @@ def execute_edit_person(data: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "ok": True,
             "message": f"Deleted {name}.",
-            "redirect_url": reverse("session-details", kwargs={"pk": session.id}),
+            "redirect_url":  f"/sessions/{session_id}/",
         }
 
     return {"ok": False, "message": "Unsupported edit_person operation."}
@@ -249,7 +248,7 @@ def execute_edit_item(payload: dict) -> dict:
         return {
             "ok": True,
             "message": f"✅ Added {item.name} to {person.name}.",
-            "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+            "redirect_url":  f"/sessions/{session_id}/",
         }
 
     if operation == "update":
@@ -266,7 +265,7 @@ def execute_edit_item(payload: dict) -> dict:
         return {
             "ok": True,
             "message": "✅ Updated item.",
-            "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+            "redirect_url":  f"/sessions/{session_id}/",
         }
 
     if operation == "delete":
@@ -277,7 +276,7 @@ def execute_edit_item(payload: dict) -> dict:
         return {
             "ok": True,
             "message": "✅ Deleted item.",
-            "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+            "redirect_url":  f"/sessions/{session_id}/",
         }
 
     if operation == "move":
@@ -294,7 +293,7 @@ def execute_edit_item(payload: dict) -> dict:
         return {
             "ok": True,
             "message": "✅ Moved item.",
-            "redirect_url": reverse("session-details", kwargs={"pk": session.pk}),
+            "redirect_url":  f"/sessions/{session_id}/",
         }
 
     return {"ok": False, "message": "Unsupported edit_item operation."}
@@ -335,5 +334,5 @@ def execute_edit_session_entities(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ok": True,
         "message": "\n".join(messages),
-        "redirect_url": reverse("session-details", kwargs={"pk": session_id}),
+        "redirect_url": f"/sessions/{session_id}/",
     }

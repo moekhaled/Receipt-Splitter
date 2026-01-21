@@ -1,10 +1,10 @@
 {% extends "app/base.html" %}
 
-{% block title %}New Session{% endblock %}
+{% block title %}New Receipt{% endblock %}
 
 {% block content %}
 <div id="session-form-container">
-    <h2>Create New Session</h2>
+    <h2>Create New Receipt</h2>
 
     <form method="post" id="session-form" novalidate>
         {% csrf_token %}
@@ -21,7 +21,7 @@
         {# Tax / Service / Discount in a compact grid #}
         <div class="session-grid">
             <div class="session-form-row small">
-                <label for="{{ form.tax.id_for_label }}">Tax</label>
+                <label for="{{ form.tax.id_for_label }}">Tax/VAT %</label>
                 {{ form.tax }}
                 {% if form.tax.errors %}
                     <div class="field-error">{{ form.tax.errors|striptags }}</div>
@@ -29,7 +29,7 @@
             </div>
 
             <div class="session-form-row small">
-                <label for="{{ form.service.id_for_label }}">Service</label>
+                <label for="{{ form.service.id_for_label }}">Service %</label>
                 {{ form.service }}
                 {% if form.service.errors %}
                     <div class="field-error">{{ form.service.errors|striptags }}</div>
@@ -37,7 +37,7 @@
             </div>
 
             <div class="session-form-row small">
-                <label for="{{ form.discount.id_for_label }}">Discount</label>
+                <label for="{{ form.discount.id_for_label }}">Discount %</label>
                 {{ form.discount }}
                 {% if form.discount.errors %}
                     <div class="field-error">{{ form.discount.errors|striptags }}</div>
