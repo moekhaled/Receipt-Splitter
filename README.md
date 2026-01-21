@@ -1,272 +1,130 @@
-# Receipt Splitter (Order Splitter) — Django Expense & Receipt Splitting App
+# Order Splitter (Microservices)
 
-Receipt Splitter is a Django web application for splitting shared expenses across **sessions** (think: a receipt for a dinner, group order, trip purchase, etc.). A session contains **people**, and each person has **items** (name, price, quantity). The app calculates totals per person and applies session-level **VAT (tax)**, **service**, and **discount**.
+This branch refactors the original monolithic Django app into a small microservice-style setup while keeping the core AI contract intact:
 
-The project focuses on clean, scalable structure using Django CBVs — and now includes an **AI assistant** that can create/edit sessions from natural language prompts.
+- **The LLM returns JSON only**
+- The JSON is **validated**
+- Valid actions are **executed by backend services** (DB writes happen in the backend)
 
----
+## Architecture
 
-## Live Demo
+The application is split into **4 components**:
 
-Try the hosted app here: https://receipt-splitter-omvm.onrender.com/
+1. **Frontend (Django SSR)**
+   - Renders HTML templates and serves the user-facing pages.
+   - **Does not write to the database**.
+   - Delegates all write operations to the backend via HTTP.
 
-Note: The Render instance may **spin down when idle**. On your first visit it can take up to **~50 seconds** to wake up.
+2. **Backend (Django API)**
+   - Exposes `/api/...` endpoints.
+   - **Only service that writes to the DB**.
+   - Validates AI payloads and runs `services.py` executors.
 
----
+3. **AI Service (Django)**
+   - Exposes `/ai/...` endpoints.
+   - Fetches read-only context from the backend.
+   - Calls the LLM and forwards `{intent, ai_data}` to the backend to execute changes.
 
+4. **Database**
+   - Postgres (Docker container).
+   - Shared by services (initially), but writes are enforced by design through backend only.
 
-## Key Features
+### Request routing (nginx)
 
-### Core App
-- **Session-based grouping** (each session = one receipt)
-- **People inside sessions**, **items inside people**
-- Per-item: `name`, `price`, `quantity`
-- Session-level adjustments:
-  - **VAT** (stored in DB as `tax`)
-  - **service**
-  - **discount**
-- Automatic calculations:
-  - Session subtotal from item totals
-  - Session total with VAT/service/discount applied
-  - Per-person totals (raw + adjusted)
+A single nginx entrypoint routes traffic by path:
 
-### UI / Views
-- Session list + session detail views
-- Detailed session breakdown view (prefetches people + items)
-- Full CRUD:
-  - Sessions: create, edit, delete
-  - People: create, edit, delete (scoped under a session)
-  - Items: create (under a person), edit, delete
+- `/` → `frontend:8000`
+- `/api/` → `backend:8000`
+- `/ai/` → `ai:8000`
 
----
+## Repository layout (key files)
 
-## AI Assistant (Natural Language → Actions)
+- `services/nginx/default.conf` — nginx routing rules
+- `services/frontend/Dockerfile` — builds the frontend image
+- `services/backend/Dockerfile` — builds the backend image
+- `services/ai/Dockerfile` — builds the AI image
+- `docker-compose.yml` — runs all services together
+- `app/views.py` — **frontend views only** (SSR + delegates writes to backend)
+- `app/ai_views.py` — **AI endpoints only** (`/ai/csrf/`, `/ai/parse/`)
+- `app/api_views.py` — **backend API endpoints** (`/api/...`)
+- `app/web_urls.py`, `app/ai_urls.py`, `app/api_urls.py` — split URL routing
+- `order_splitter/urls_frontend.py`, `urls_backend.py`, `urls_ai.py` — per-service root URLConfs
+- `order_splitter/settings_frontend.py`, `settings_backend.py`, `settings_ai.py` — per-service settings modules
 
-The app includes an AI endpoint that accepts natural language and returns a structured action the server can validate and execute.
+## Environment variables
 
-### What it can do (current)
-1. **General questions** about the app (“what can you do?”, “how does VAT work?”)
-2. **Create a session** from a prompt (optionally with people + items)
-3. **Edit a session** (title / VAT / service / discount)
-4. **Edit people inside a session** (add / rename / delete)
-5. **Edit items inside a session** (add / update / delete / move between people)
-6. **Batch editing (multi-operations)**: apply multiple people/items edits in a single prompt (e.g., add a person + add items + rename someone)
+Create a file named `.env` at the repo root:
 
-### How it works
-- The assistant is powered by **Google Gemini** via `google-genai`.
-- The model is forced into **JSON output** and constrained by a **Pydantic JSON schema**.
-- The server then:
-  1. stores chat history (in Django session)
-  2. validates the AI output
-  3. executes DB writes in a transaction
-  4. returns a JSON response (plus re-rendered chat HTML)
-
-### Important mapping: VAT vs DB field name
-- The AI speaks in terms of **`vat`**
-- The database field is **`tax`**
-- Creation + updates map: `vat → tax`
-
----
-
-## AI Endpoints
-
-### `GET /ai/csrf/`
-Sets the CSRF cookie so the frontend can POST safely.
-
-### `POST /ai/parse/`
-Accepts JSON payload:
-```json
-{
-  "prompt": "create a dinner for Ali and Sara...",
-  "context": { "session_id": 12 }
-}
-```
-
-Returns:
-```json
-{
-  "response": "✅ Created session '...' with 2 people and 5 items.",
-  "action": "redirect|none",
-  "redirect_url": "/sessions/12/",
-  "html": "<rendered chat messages html...>"
-}
+```env
+DJANGO_SECRET_KEY=change-me-super-secret
+GEMINI_API_KEY=put-your-key-here
 ```
 
 Notes:
-- Chat history is stored server-side in the Django session (trimmed to a max number of turns + max chars per message).
-- If intent requires a session id and it isn’t provided by the model, the server can fall back to `context.session_id` (when available).
+- **All services should share the same `DJANGO_SECRET_KEY`** so sessions/cookies behave consistently.
+- `GEMINI_API_KEY` is needed by the **AI service**.
+- `BACKEND_URL` is configured in compose for frontend/ai to call the backend.
 
----
+## Running with Docker
 
-## Data Model
+From the repo root:
 
-### `Session`
-- `title`
-- `tax` (AI calls it `vat`)
-- `service`
-- `discount`
-- `created_at`
-- Methods: `subtotal()`, `total()`, `taxed(amount)`
-
-### `Person`
-- `name`
-- `session` (FK)
-- Methods: `calculate_amount()`, `calculate_taxed_amount()`
-
-### `Item`
-- `name`
-- `price` (> 0)
-- `quantity` (>= 1)
-- `person` (FK)
-- Method: `total()` (`price * quantity`)
-
----
-
-## AI Schemas (Strict JSON)
-
-The AI is constrained to one of these intents:
-
-### `general_inquiry`
-```json
-{ "intent": "general_inquiry", "answer": "..." }
-```
-
-### `create_session`
-```json
-{
-  "intent": "create_session",
-  "session": { "title": "...", "vat": 14, "service": 10, "discount": 0 },
-  "people": [
-    { "name": "Ali", "items": [{ "name": "Burger", "price": 120, "quantity": 1 }] }
-  ]
-}
-```
-
-### `edit_session`
-```json
-{
-  "intent": "edit_session",
-  "session_id": 12,
-  "session_query": null,
-  "updates": { "vat": 14, "service": 12 }
-}
-```
-
-### `edit_person`
-```json
-{
-  "intent": "edit_person",
-  "session_id": 12,
-  "operation": "rename",
-  "person_id": 55,
-  "new_name": "Moe"
-}
-```
-
-### `edit_item`
-```json
-{
-  "intent": "edit_item",
-  "session_id": 12,
-  "operation": "update",
-  "item_id": 901,
-  "updates": { "quantity": 2 }
-}
-```
-
-### `edit_session_entities` (batch operations)
-```json
-{
-  "intent": "edit_session_entities",
-  "session_id": 12,
-  "operations": [
-    { "intent": "edit_person", "operation": "add", "new_name": "Saaeed" },
-    { "intent": "edit_item", "operation": "add", "to_person_id": 55, "name": "Pepsi", "price": 30, "quantity": 2 },
-    { "intent": "edit_person", "operation": "rename", "person_id": 10, "new_name": "Moe" }
-  ]
-}
-```
-
-Validation rules enforced server-side:
-- VAT/service/discount must be between **0–100**
-- Item price must be **> 0**
-- Quantity must be **>= 1** (defaults to 1)
-- `create_session` requires **at least 1 person**
-- `edit_session` requires either `session_id` or `session_query`, plus at least one field in `updates`
-- `edit_person` / `edit_item` enforce required fields per operation
-- Batch operations require a non-empty `operations[]` list, and each operation must validate independently
-
----
-
-## Tech Stack
-
-- **Django** (CBVs, templates, server-side rendering)
-- **SQLite** (default; easy to switch to Postgres)
-- **Pydantic** for schema validation + JSON schema generation
-- **Google Gemini (google-genai)** for structured JSON actions
-
----
-
-## Local Setup
-
-### 1) Create & activate a virtual env
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+docker compose up --build
 ```
 
-### 2) Install dependencies
+Then open (depending on your host port mapping):
+- `http://localhost:8081/` (or `http://localhost:8080/`) — Frontend UI
+- `http://localhost:8081/api/health/` — Backend health check
+- `http://localhost:8081/ai/csrf/` — AI csrf endpoint
+- `http://localhost:8081/ai/parse/` — AI parse endpoint (POST)
+
+### Useful commands
+
 ```bash
-pip install -r requirements.txt
+docker compose ps
+docker compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f ai
+docker compose logs -f nginx
 ```
 
-### 3) Configure environment variables (AI)
-Set:
-- `GEMINI_API_KEY` (used automatically by the Gemini client)
+## How AI changes are applied
 
-Example:
-```bash
-export GEMINI_API_KEY="your_key_here"
+1. Frontend sends prompt to AI endpoint (`POST /ai/parse/`)
+2. AI service fetches session context from backend (`GET /api/sessions/<id>/context/`)
+3. AI service calls the LLM (Gemini) and expects **strict JSON**
+4. AI service forwards `{intent, ai_data}` to backend (`POST /api/ai/execute/`)
+5. Backend validates payload and executes DB writes via `app/ai/validation.py` + `app/ai/services.py`
+6. Backend returns `{ok, message, redirect_url?}`
+
+## Troubleshooting
+
+### CSS not loading / paths look wrong
+Ensure:
+
+```python
+STATIC_URL = "/static/"
 ```
 
-### 4) Run migrations + start server
-```bash
-python manage.py migrate
-python manage.py runserver
+and static serving is enabled (e.g., WhiteNoise or nginx static config).
+
+### CSRF Origin checking failed
+Add your development origins in settings:
+
+```python
+CSRF_TRUSTED_ORIGINS = [
+  "http://localhost:8081",
+  "http://127.0.0.1:8081",
+  "http://localhost:8000",
+  "http://127.0.0.1:8000",
+]
 ```
 
-Open:
-- Sessions list: `/sessions/`
-- AI endpoints: `/ai/csrf/`, `/ai/parse/`
+### AI timeouts / worker timeout
+LLM responses can be slow or overloaded.
+Consider increasing AI gunicorn timeout (AI container only), and handle LLM errors gracefully.
 
----
+## License
 
-## URL Structure Overview
-
-- `/sessions/` — list sessions
-- `/sessions/add/` — create session
-- `/sessions/<id>/` — session details
-- `/sessions/<id>/details/` — detailed breakdown
-- `/sessions/<id>/edit/` — edit session
-- `/sessions/<id>/delete/` — delete session
-
-- `/sessions/<session_id>/persons/` — list people in session
-- `/sessions/<session_id>/persons/add/` — add person
-- `/sessions/<session_id>/persons/<person_id>/` — person details
-- `/sessions/<session_id>/persons/<person_id>/alter/` — edit person
-- `/sessions/<session_id>/persons/<person_id>/delete/` — delete person
-
-- `/sessions/<session_id>/persons/<person_id>/add-item/` — add item to person
-- `/items/<item_id>/alter/` — edit item
-- `/items/<item_id>/delete/` — delete item
-
-- `/ai/csrf/` — CSRF cookie helper for AI UI
-- `/ai/parse/` — AI prompt → action endpoint
-
----
-
-## Project Direction / Next Ideas
-
-- Authentication (users + private sessions)
-- Upload receipt text/image → parse into structured items (OCR + extraction flow)
-- Postgres + deployment hardening
+Internal / private project (update as needed).
