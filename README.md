@@ -1,179 +1,128 @@
 # Receipt Splitter (Microservices)
 
-This branch refactors the original monolithic Django app into a microservice-style setup while keeping the core AI contract intact:
+This repository contains a receipt-splitting application that was originally a single Django project and has now been **physically split into three separate Django services** (each with its own Dockerfile) plus shared infrastructure in `infra/`.
 
-- The LLM returns **JSON only**
-- The JSON is **validated**
-- Valid actions are **executed by backend services** (DB writes happen in the backend)
-
----
-
-## Architecture
-
-The application is split into **4 components**:
-
-1. **Frontend (Django SSR)**
-   - Renders HTML templates and serves user-facing pages.
-   - Reads data via HTTP from the backend API.
-   - Delegates all write operations to the backend via HTTP.
-
-2. **Backend (Django API)**
-   - Exposes `/api/...` endpoints.
-   - **Only service that writes to the DB**.
-   - Validates AI envelopes and executes actions via the backend AI execution layer.
-
-3. **AI Service (Django)**
-   - Exposes `/ai/...` endpoints (e.g. `/ai/parse/`).
-   - Fetches read-only context from the backend (e.g. `/api/sessions/<id>/context/`).
-   - Calls the LLM (Gemini) and forwards `{intent, ai_data}` to the backend writer.
-
-4. **Database (Postgres)**
-   - Postgres 16 running as a Docker container.
-   - Persistent storage via Docker named volume.
+The system preserves the core contract-driven AI workflow:
+- The LLM produces **structured JSON**
+- JSON is **validated** against shared contracts
+- **Only the backend** performs database writes
 
 ---
 
-## Request routing (nginx)
+## Services
 
-A single nginx entrypoint routes traffic by path:
+### 1) Frontend (Django SSR)
+- Renders HTML pages (server-side rendered).
+- Reads data from the backend over HTTP.
+- Hosts UI-only helpers such as **chat-history persistence** using Django sessions.
 
-- `/` → `frontend:8000`
-- `/api/` → `backend:8000`
-- `/ai/` → `ai:8080`
+### 2) Backend (Django API + DB writer)
+- Exposes `/api/...` endpoints.
+- **Single source of truth** for persistence.
+- Owns database schema and migrations (Postgres).
 
-Important:
-- Any **frontend-only** endpoints must **NOT** be under `/ai/` because nginx forwards `/ai/` to the AI container.
+### 3) AI Service (Django)
+- Exposes `/ai/...` endpoints (notably `POST /ai/parse/`).
+- Fetches receipt/session context from the backend.
+- Calls the LLM (Gemini) and forwards validated action envelopes to the backend writer.
+
+### 4) Infrastructure
+Located under `infra/`:
+- `infra/docker-compose.yml` — orchestrates all containers
+- `infra/nginx/` — nginx config used to route traffic
+- Postgres container + a persistent Docker volume
 
 ---
 
-## Repository layout (key files)
+## Routing (nginx)
 
-- `infra/docker-compose.yml` — runs all services together
-- `services/nginx/default.conf` — nginx routing rules
-- `services/frontend/Dockerfile` — builds the frontend image
-- `services/backend/Dockerfile` — builds the backend image
-- `services/ai/Dockerfile` — builds the AI image
-- `packages/receipt_splitter_contracts/` — shared contract (intents + schema validation)
+nginx routes requests by path prefix:
+
+- `/` → frontend
+- `/api/` → backend
+- `/ai/` → ai service
+
+⚠️ Important: frontend-only endpoints must **not** live under `/ai/` (because nginx forwards `/ai/` to the AI service).
+
+---
+
+## Repository layout (high-level)
+
+- `ai/` — AI Django project (Gemini + intent envelope creation)
+  - `ai_app/`, `ai_core/`, `ai_service/`, `Dockerfile`, `manage.py`, `requirements.txt`
+- `backend/` — Backend Django project (API + DB writer)
+  - `app/`, `order_splitter/`, `Dockerfile`, `manage.py`, `requirements.txt`
+- `frontend/` — Frontend Django project (SSR UI)
+  - `frontend_service/`, `webapp/`, `Dockerfile`, `manage.py`, `requirements.txt`
+- `infra/`
+  - `docker-compose.yml` — orchestrates containers
+  - `nginx/` — nginx config (routing)
+- `packages/` — shared packages (e.g., `receipt_splitter_contracts/`)
+- `venv/` — local dev virtualenv (not used by Docker; should be ignored)
+- `.env` — local secrets (should NOT be committed)
+
 
 ---
 
 ## Environment variables
 
-Create a file named `.env` **in `infra/`**:
+Create `.env` (do not commit it):
 
 ```env
-DJANGO_SECRET_KEY=change-me-super-secret
-GEMINI_API_KEY=put-your-key-here
+DJANGO_SECRET_KEY=change-me
+GEMINI_API_KEY=change-me
 ```
 
-Notes:
-- All services should share the same `DJANGO_SECRET_KEY` so cookies/session behavior is consistent.
-- `GEMINI_API_KEY` is required by the AI service.
+If you keep DB credentials configurable, also add (or rely on compose defaults):
+
+```env
+DB_NAME=receipt_splitter
+DB_USER=receipt_splitter
+DB_PASSWORD=receipt_splitter
+DB_HOST=db
+DB_PORT=5432
+```
 
 ---
 
-## Running with Docker
+## Run locally (Docker)
 
-From the repo root:
+From the repository root:
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build -d
 ```
 
 ### Run migrations (backend only)
-
-Backend is the DB writer and owns schema:
+On first run (or after model changes):
 
 ```bash
 docker compose -f infra/docker-compose.yml exec backend python manage.py migrate
 ```
 
 Optional:
+
 ```bash
 docker compose -f infra/docker-compose.yml exec backend python manage.py createsuperuser
 ```
 
----
-
-## Makefile convenience
-
-For Linux/Ubuntu (and anyone with `make` installed), you can use the included Makefile:
-
+### Logs
 ```bash
-make up
-```
-
-This is a convenience wrapper around the full Docker Compose command. See the `Makefile` for available targets.
-
----
-
-## Open the app
-
-Depending on your port mapping (nginx), typically:
-
-- `http://localhost:8000/` — Frontend UI
-- `http://localhost:8000/api/...` — Backend API
-- `http://localhost:8000/ai/...` — AI service endpoints
-
----
-
-## How AI changes are applied
-
-1. Frontend sends prompt to AI endpoint: `POST /ai/parse/`
-   - Payload shape is:
-     ```json
-     { "message": "...", "history": [...], "session_id": 123 }
-     ```
-2. AI service fetches session context from backend: `GET /api/sessions/<id>/context/`
-3. AI service calls the LLM (Gemini) and expects strict JSON output.
-4. AI service validates `{intent, ai_data}` against shared contracts.
-5. AI service forwards `{intent, ai_data}` to backend writer (e.g. `POST /api/ai/execute/`).
-6. Backend validates payload and executes DB writes.
-7. Backend returns `{ok, message, redirect_url?}` which is returned back to the frontend.
-
-Important:
-- Informational prompts like “how does this app work?” should be handled inside the AI service (no backend forwarding).
-  Only actionable intents (create/edit) are forwarded.
-
----
-
-## UI chat history (Django sessions)
-
-Chat history is stored on the **frontend** using Django sessions.
-
-The frontend exposes an endpoint to append a single message to session history:
-
-- `POST /history/append/` — body: `{ "role": "user"|"assistant", "content": "..." }`
-
-The UI/JS calls this endpoint after adding a real user/assistant message (and does **not** persist transient UI messages like “🤖 Thinking…”).
-
----
-
-## Database persistence
-
-Postgres data is stored in a Docker **named volume** (e.g. `db_data`). Data persists across container restarts and `docker compose down`, but will be deleted by `docker compose down -v` (volume removal).
-
----
-
-## Useful commands
-
-```bash
-docker compose -f infra/docker-compose.yml ps
-docker compose -f infra/docker-compose.yml logs -f frontend
 docker compose -f infra/docker-compose.yml logs -f backend
+docker compose -f infra/docker-compose.yml logs -f frontend
 docker compose -f infra/docker-compose.yml logs -f ai
 docker compose -f infra/docker-compose.yml logs -f nginx
 docker compose -f infra/docker-compose.yml logs -f db
 ```
 
-Stop / start:
+### Stop / reset
+Stop containers (keeps DB volume):
 
 ```bash
 docker compose -f infra/docker-compose.yml down
-docker compose -f infra/docker-compose.yml up -d
 ```
 
-Reset including DB volume (destructive):
+Reset everything including the database volume (destructive):
 
 ```bash
 docker compose -f infra/docker-compose.yml down -v
@@ -181,34 +130,54 @@ docker compose -f infra/docker-compose.yml down -v
 
 ---
 
-## Troubleshooting
+## Makefile (optional convenience)
 
-### DB auth errors (Postgres)
-Ensure backend env matches Postgres container credentials:
-- DB_HOST=db
-- DB_NAME=receipt_splitter
-- DB_USER=receipt_splitter
-- DB_PASSWORD=receipt_splitter
+If you have `make` installed:
 
-### CSRF Origin checking failed
-Add your development origins in settings:
-
-```python
-CSRF_TRUSTED_ORIGINS = [
-  "http://localhost:8000",
-  "http://127.0.0.1:8000",
-]
+```bash
+make up
 ```
+
+See `Makefile` for available targets.
+
+---
+
+## AI flow (high level)
+
+1. Frontend sends user prompt to AI:
+   - `POST /ai/parse/`
+   - payload shape: `{ "message": "...", "history": [...], "session_id": 123 }`
+2. AI service optionally fetches context from backend (e.g. session context endpoint).
+3. AI calls the LLM and produces a structured `{intent, ai_data}` envelope.
+4. Envelope is validated using `packages/receipt_splitter_contracts`.
+5. Action intents are forwarded to the backend writer (backend validates again and writes to DB).
+6. Backend responds with `{ok, message, redirect_url?}` which is returned to the frontend.
+
+Non-action queries (e.g. “how does this app work?”) should be answered by the AI service without forwarding to the backend writer.
+
+---
+
+## Chat history persistence (frontend sessions)
+
+The UI persists chat history using **frontend Django sessions** so it survives reloads/redirects.
+
+Frontend endpoint:
+- `POST /history/append/`
+  - body: `{ "role": "user"|"assistant", "content": "..." }`
+
+(Transient UI messages like “🤖 Thinking…” should not be appended.)
 
 ---
 
 ## Housekeeping
 
-- Local SQLite files (e.g. `db.sqlite3`) are development artifacts and should not be committed.
-  Add them to `.gitignore` and remove from tracking if already committed.
+- Do not commit local SQLite artifacts (e.g. `db.sqlite3`). Add them to `.gitignore` and remove from tracking if already committed.
 
 ---
 
-## License
+## Next milestone
 
-Internal / private project (update as needed).
+Migrate the **backend** from Django to **FastAPI** while preserving:
+- `/api/...` surface behavior used by the frontend
+- AI writer/execute endpoint semantics
+- shared contracts validation (`receipt_splitter_contracts`)
