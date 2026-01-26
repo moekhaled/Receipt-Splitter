@@ -6,9 +6,6 @@ This branch refactors the original monolithic Django app into a microservice-sty
 - The JSON is **validated**
 - Valid actions are **executed by backend services** (DB writes happen in the backend)
 
-> Note: During the split we intentionally kept some duplicated/legacy modules in place for safety.
-> These will be cleaned up in a follow-up commit once the migration is fully stable.
-
 ---
 
 ## Architecture
