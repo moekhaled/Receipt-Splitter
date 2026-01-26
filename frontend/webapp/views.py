@@ -500,7 +500,7 @@ class AlterUserView(View):
             form.add_error(None, f"❌ {msg or 'Could not rename person.'}")
             return render(request, self.template_name, {"form": form, "session_pk": session_pk, "person_pk": person_pk,"ai_chat_history": ai_history_get(request),})
 
-        return HttpResponseRedirect(reverse("person-details", kwargs={"session_pk": session_pk, "person_pk": person_pk,"ai_chat_history": ai_history_get(request),}))
+        return HttpResponseRedirect(reverse("person-details", kwargs={"session_pk": session_pk, "person_pk": person_pk,}))
 
 
 class PersonDeleteView(View):

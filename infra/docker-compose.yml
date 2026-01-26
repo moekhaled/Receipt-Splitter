@@ -21,7 +21,7 @@ services:
       context: ..
       dockerfile: backend/Dockerfile
     environment:
-      DJANGO_SETTINGS_MODULE: order_splitter.settings_backend
+      DJANGO_SETTINGS_MODULE: order_splitter.settings
       DJANGO_SECRET_KEY: dev-secret-key
       DJANGO_DEBUG: "1"
       ALLOWED_HOSTS: "*"

@@ -56,8 +56,6 @@ Important:
 - `services/frontend/Dockerfile` — builds the frontend image
 - `services/backend/Dockerfile` — builds the backend image
 - `services/ai/Dockerfile` — builds the AI image
-- `order_splitter/settings_frontend.py`, `settings_backend.py`, `settings_ai.py` — per-service settings
-- `order_splitter/urls_frontend.py`, `urls_backend.py`, `urls_ai.py` — per-service root URLConfs
 - `packages/receipt_splitter_contracts/` — shared contract (intents + schema validation)
 
 ---

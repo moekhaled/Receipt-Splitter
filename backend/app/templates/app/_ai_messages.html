@@ -1,9 +1,0 @@
-{% for m in history %}
-  <div class="ai-message {% if m.role == 'user' %}user{% else %}bot{% endif %}">
-    <div class="ai-bubble">{{ m.content|linebreaksbr }}</div>
-  </div>
-{% empty %}
-  <div class="ai-message bot">
-    <div class="ai-bubble">Hi! Ask me what I can do, or tell me to create/edit a session.</div>
-  </div>
-{% endfor %}
