@@ -1,0 +1,82 @@
+{% extends "webapp/base.html" %}
+
+{% block title %}Alter Item{% endblock %}
+
+{% block content %}
+<div id="alter-item-container">
+
+    <h2>Alter Item: {{ item.name }}</h2>
+
+    {# In Option A, item/person are dicts; item.person.name no longer exists #}
+    {% if person_pk %}
+        <p class="muted-text">
+            {% if item.person_name %}
+                For {{ item.person_name }}
+            {% else %}
+                For person #{{ person_pk }}
+            {% endif %}
+        </p>
+    {% endif %}
+
+    {# Show non-field errors (backend/network failures) #}
+    {% if form.non_field_errors %}
+        <div class="form-error">
+            {{ form.non_field_errors|striptags }}
+        </div>
+    {% endif %}
+
+    <form method="POST" id="alter-item-form" novalidate>
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="{{ form.name.id_for_label }}">Name</label>
+            {{ form.name }}
+            {% if form.name.errors %}
+                <div class="field-error">{{ form.name.errors|striptags }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.price.id_for_label }}">Price</label>
+            {{ form.price }}
+            {% if form.price.errors %}
+                <div class="field-error">{{ form.price.errors|striptags }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.quantity.id_for_label }}">Quantity</label>
+            {{ form.quantity }}
+            {% if form.quantity.errors %}
+                <div class="field-error">{{ form.quantity.errors|striptags }}</div>
+            {% endif %}
+        </div>
+
+        <div class="edit-actions">
+            <button type="submit" class="form-button">Save</button>
+
+            {# Delete route must not use ORM pk; use dict id + include session_pk if your urls require it #}
+            <a href="{% url 'delete-item' session_pk=session_pk person_pk=person_pk  item_pk=item.id %}" class="danger-button">
+                Delete Item
+            </a>
+            
+
+            {# Cancel back to person or session (no ORM relations) #}
+            {% if session_pk and person_pk %}
+                <a href="{% url 'person-details' session_pk=session_pk person_pk=person_pk %}" class="btn-cancel">
+                    Cancel
+                </a>
+            {% elif session_pk %}
+                <a href="{% url 'session-details' session_pk=session_pk %}" class="btn-cancel">
+                    Cancel
+                </a>
+            {% else %}
+                <a href="{% url 'all-sessions' %}" class="btn-cancel">
+                    Cancel
+                </a>
+            {% endif %}
+        </div>
+    </form>
+
+</div>
+{% endblock %}

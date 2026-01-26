@@ -7,13 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .models import Session, Person, Item
 
-from .ai.validation import (
-    validate_create_session_payload,
-    validate_edit_session_payload,
-    validate_edit_person_payload,
-    validate_edit_item_payload,
-    validate_edit_session_entities_payload,
-)
+from .ai.validation import validate_ai_request
 from .ai.services import (
     execute_create_session,
     execute_edit_session,
@@ -87,13 +81,25 @@ def session_context(request, session_id: int):
     )
 
     return ok({
-        "session_id": session_id,
+        "session": {
+            "id": session.id,
+            "title": session.title,
+            "tax": float(session.tax),
+            "service": float(session.service),
+            "discount": float(session.discount),
+            "created_at":session.created_at,
+        },
         "people": [
             {
                 "id": p.id,
                 "name": p.name,
                 "items": [
-                    {"id": it.id, "name": it.name, "price": float(it.price), "quantity": it.quantity}
+                    {
+                        "id": it.id,
+                        "name": it.name,
+                        "price": float(it.price),
+                        "quantity": it.quantity,
+                    }
                     for it in p.items.all().order_by("id")
                 ],
             }
@@ -112,57 +118,77 @@ def ai_execute(request):
     if not ok_json:
         return bad_json()
 
-    intent = (data.get("intent") or "").strip()
-    ai_data = data.get("ai_data") or {}
+    # Optional backward-compat:
+    # If someone sends the "old style" payload where intent is inside the object
+    # and ai_data is missing, wrap it.
+    if isinstance(data, dict) and "ai_data" not in data and "intent" in data:
+        data = {"intent": (data.get("intent") or "").strip(), "ai_data": data}
+
+    vr = validate_ai_request(data)
+    if not vr.ok:
+        return fail("Validation failed.", errors=vr.errors, status=400)
+
+    intent = (vr.data.get("intent") or "").strip()
 
     if intent == "create_session":
-        vr = validate_create_session_payload(ai_data)
-        if not vr.ok:
-            return fail("Validation failed.", errors=vr.errors, status=400)
         result = execute_create_session(vr.data)
-        # normalize response
         result.setdefault("ok", True)
         result.setdefault("message", "✅ Session created.")
         return ok(result)
 
     if intent == "edit_session":
-        vr = validate_edit_session_payload(ai_data)
-        if not vr.ok:
-            return fail("Validation failed.", errors=vr.errors, status=400)
         result = execute_edit_session(vr.data)
         result.setdefault("ok", True)
         result.setdefault("message", "✅ Session updated.")
         return ok(result)
 
     if intent == "edit_person":
-        vr = validate_edit_person_payload(ai_data)
-        if not vr.ok:
-            return fail("Validation failed.", errors=vr.errors, status=400)
         result = execute_edit_person(vr.data)
-        # execute_edit_person already tends to return ok/message/redirect_url but normalize anyway
         result.setdefault("ok", True)
         result.setdefault("message", "✅ Person updated.")
         return ok(result)
 
     if intent == "edit_item":
-        vr = validate_edit_item_payload(ai_data)
-        if not vr.ok:
-            return fail("Validation failed.", errors=vr.errors, status=400)
         result = execute_edit_item(vr.data)
         result.setdefault("ok", True)
         result.setdefault("message", "✅ Item updated.")
         return ok(result)
 
     if intent == "edit_session_entities":
-        vr = validate_edit_session_entities_payload(ai_data)
-        if not vr.ok:
-            return fail("Validation failed.", errors=vr.errors, status=400)
         result = execute_edit_session_entities(vr.data)
         result.setdefault("ok", True)
         result.setdefault("message", "✅ Changes applied.")
         return ok(result)
 
     return fail("Unknown intent.", status=400, errors=["Unknown intent."])
+
+@csrf_exempt
+@require_POST
+def ai_history_append(request):
+    ok_json, data = parse_json_body(request)
+    if not ok_json:
+        return bad_json()
+
+    user_text = (data.get("user") or "").strip()
+    bot_text = (data.get("bot") or "").strip()
+
+    if not user_text or not bot_text:
+        return fail("Missing user/bot text.", status=400)
+
+    history = request.session.get("ai_chat_history", [])
+    if not isinstance(history, list):
+        history = []
+
+    history.append({"role": "user", "content": user_text})
+    history.append({"role": "assistant", "content": bot_text})
+
+    # keep it bounded
+    history = history[-24:]  # last 12 turns
+
+    request.session["ai_chat_history"] = history
+    request.session.modified = True
+
+    return ok({"message": "history saved"})
 
 
 # ---------------------------
@@ -305,3 +331,27 @@ def ui_delete_item(request, item_id: int):
     if not deleted:
         return fail("Item not found.", status=404)
     return ok({"message": "✅ Item deleted."})
+
+# ---------------------------
+# UI endpoints (Frontend reads through Backend)
+# ---------------------------
+@require_GET
+def sessions_list(request):
+    """
+    Read-only: returns a list of sessions for the frontend SSR.
+    """
+    sessions = Session.objects.all().order_by("-id")[:200]
+
+    return ok({
+        "sessions": [
+            {
+                "id": s.id,
+                "title": s.title,
+                "tax": float(s.tax) if s.tax is not None else 0.0,
+                "service": float(s.service) if s.service is not None else 0.0,
+                "discount": float(s.discount) if s.discount is not None else 0.0,
+                "created_at":s.created_at,
+            }
+            for s in sessions
+        ]
+    })

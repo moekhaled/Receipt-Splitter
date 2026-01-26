@@ -1,0 +1,50 @@
+{% extends "webapp/base.html" %}
+
+{% block title %}Alter {{ person.name }}{% endblock %}
+
+{% block content %}
+<div id="alter-user-container">
+    <h2>Alter User: {{ person.name }}</h2>
+
+    {# Show backend/network errors attached as non-field errors #}
+    {% if form.non_field_errors %}
+        <div class="form-error">
+            {{ form.non_field_errors|striptags }}
+        </div>
+    {% endif %}
+
+    <form method="POST" id="alter-user-form" novalidate>
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="{{ form.name.id_for_label }}">Name</label>
+            {{ form.name }}
+            {% if form.name.errors %}
+                <div class="field-error">{{ form.name.errors|striptags }}</div>
+            {% endif %}
+        </div>
+
+        <div class="edit-actions">
+            <button type="submit" class="form-button">Save</button>
+
+            {# In Option A, person is a dict: no person.session.pk, no person.pk #}
+            {% if session_pk and person.id %}
+                <a href="{% url 'delete-person' session_pk=session_pk person_pk=person.id %}" class="danger-button">
+                    Delete Person
+                </a>
+            {% elif person.id %}
+                <a href="{% url 'delete-person' person_pk=person.id %}" class="danger-button">
+                    Delete Person
+                </a>
+            {% endif %}
+
+            {# Optional cancel, avoids being stuck on this page #}
+            {% if session_pk %}
+                <a href="{% url 'person-details' session_pk=session_pk person_pk=person.id %}" class="btn-cancel">
+                    Cancel
+                </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}

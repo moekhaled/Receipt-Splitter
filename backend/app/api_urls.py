@@ -9,6 +9,11 @@ urlpatterns = [
 
     # Used by AI: validate + execute via services.py (backend is the writer)
     path("ai/execute/", api_views.ai_execute, name="api-ai-execute"),
+    path("ai/history/append/", api_views.ai_history_append, name="ai-history-append"),
+
+    # Used by Frontend: UI reads from the backend 
+    path("sessions/", api_views.sessions_list, name="api-sessions-list"),
+
 
     # Used by Frontend: UI writes (backend is the writer)
     path("ui/session/create/", api_views.ui_create_session, name="ui-create-session"),

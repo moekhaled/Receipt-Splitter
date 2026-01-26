@@ -1,16 +1,7 @@
 from django.urls import path
-from . import views
-# urlpatterns = [
-#     path("",views.PersonsView.as_view(),name="all-persons"),
-#     path("persons/<int:pk>",views.PersonDetailsView.as_view(),name="person-details"),
-#     path('persons/add/', views.AddPersonView.as_view(), name='add-person'),
-#     path('persons/<int:person_pk>/add-item/', views.AddItemView.as_view(), name='add-item'),
-#     path('persons/<int:pk>/alter/', views.AlterUserView.as_view(), name='alter-user'),
-#     path('persons/<int:pk>/delete/', views.PersonDeleteView.as_view(), name='delete-person'),
-#     path('items/<int:pk>/alter/', views.AlterItemView.as_view(), name='alter-item'),
-#     path('items/<int:pk>/delete/', views.ItemDeleteView.as_view(), name='delete-item'),
-#     path('sessions/', views.SessionsView.as_view(), name='all-sessions'),
-#     path('sessions/<int:pk>/', views.SessionDetailView.as_view(), name='session-details'),]
+from . import views, api_views, ai_views
+
+
 urlpatterns = [
     #base
     path('', views.HomeView.as_view()),
@@ -36,7 +27,7 @@ urlpatterns = [
     path('items/<int:pk>/delete/', views.ItemDeleteView.as_view(), name='delete-item'),
 
     # AI Assistant
-    path("ai/parse/", views.ai_parse, name="ai-parse"),
-    path("ai/csrf/", views.ai_csrf, name="ai-csrf"),
+    path("ai/parse/", ai_views.ai_parse, name="ai-parse"),
+    path("ai/csrf/", ai_views.ai_csrf, name="ai-csrf"),
 
 ]

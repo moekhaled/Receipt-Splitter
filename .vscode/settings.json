@@ -1,1 +1,6 @@
-{"emmet.includeLanguages":{"django-html":"html"}}
+{"emmet.includeLanguages":{"django-html":"html"},
+
+  "python.analysis.extraPaths": [
+    "./packages/receipt_splitter_contracts"
+  ]
+}

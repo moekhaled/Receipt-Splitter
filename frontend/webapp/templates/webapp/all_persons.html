@@ -1,0 +1,38 @@
+{% extends "webapp/base.html" %}
+{% load static %}
+{% block title %}All Persons{% endblock %}
+{% block header_extras %}
+    <a href="{% url 'add-person' session_pk=session.id %}" class="nav-button">
+        Add Person
+    </a>
+{% endblock %}
+
+{% block content %}
+{% include 'webapp/session_navbar.html' %}
+<div id="persons-container">
+    <table id="persons-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for person in persons %}
+            <tr>
+                <td class="person-name"> <a href="{% url 'person-details' session_pk=session.id person_pk=person.id %}"> {{ person.name }} <a/> </td>
+                <td class="person-total">{{ person.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr id="grand-total-row">
+                <td><strong>Grand Total</strong></td>
+                <td class="person-total">
+                    <strong>{{ grand_total }}</strong>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endblock %}

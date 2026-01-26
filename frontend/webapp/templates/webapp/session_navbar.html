@@ -1,0 +1,7 @@
+{# webapp/session_navbar.html #}
+
+<div id="session-navbar">
+    <a href="{% url 'session-details' session_pk=session.id %}">Receipt Overview</a>
+    <a href="{% url 'all-persons' session_pk=session.id %}">Receipt</a>
+    <a href="{% url 'add-person' session_pk=session.id %}">Add Person</a>    
+</div>

@@ -1,0 +1,48 @@
+{% extends "webapp/base.html" %}
+
+{% block title %}Delete Item{% endblock %}
+
+{% block content %}
+<div id="delete-container">
+    <h2>Delete Item</h2>
+
+    {% if error %}
+        <p class="warning-text">{{ error }}</p>
+    {% endif %}
+
+    {% if item %}
+        <p>
+            Are you sure you want to delete the item:
+            <strong>{{ item.name }}</strong>?
+        </p>
+        <p>
+            Price: {{ item.price }} | Quantity: {{ item.quantity }}
+        </p>
+    {% else %}
+        <p class="warning-text">Item not found.</p>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <button type="submit" class="btn-delete" {% if not item %}disabled{% endif %}>
+            Yes, Delete
+        </button>
+
+        {# Cancel must not rely on ORM relations like item.person.session.pk #}
+        {% if session_pk and person_pk %}
+            <a href="{% url 'person-details' session_pk=session_pk person_pk=person_pk %}" class="btn-cancel">
+                Cancel
+            </a>
+        {% elif session_pk %}
+            <a href="{% url 'session-details' session_pk=session_pk %}" class="btn-cancel">
+                Cancel
+            </a>
+        {% else %}
+            <a href="{% url 'all-sessions' %}" class="btn-cancel">
+                Cancel
+            </a>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from jsonschema.exceptions import ValidationError
+from receipt_splitter_contracts.schemas import validate_ai_envelope
 
 
 @dataclass
@@ -31,6 +33,48 @@ def _as_int(x: Any) -> Optional[int]:
 
 def _clean_str(x: Any) -> str:
     return str(x).strip() if x is not None else ""
+
+def validate_ai_request(payload: Dict[str, Any]) -> ValidationResult:
+    """
+    Validates the outer AI envelope {intent, ai_data} using the shared contracts package,
+    then dispatches to the existing per-intent validators.
+
+    We keep backward compatibility with your current validators by injecting
+    the intent back into ai_data (so we don't have to rewrite each validator yet).
+    """
+    try:
+        validate_ai_envelope(payload)
+    except ValidationError as e:
+        return ValidationResult(False, {}, [f"Invalid AI payload: {e.message if hasattr(e, 'message') else str(e)}"])
+    except Exception as e:
+        return ValidationResult(False, {}, [f"Invalid AI payload: {str(e)}"])
+
+    intent = _clean_str(payload.get("intent"))
+    ai_data = payload.get("ai_data") or {}
+    if not isinstance(ai_data, dict):
+        ai_data = {}
+
+    # Back-compat: your current validators expect ai_data["intent"]
+    ai_data_with_intent = {**ai_data, "intent": intent}
+
+    if intent == "create_session":
+        return validate_create_session_payload(ai_data_with_intent)
+
+    if intent == "edit_session":
+        return validate_edit_session_payload(ai_data_with_intent)
+
+    if intent == "edit_session_entities":
+        return validate_edit_session_entities_payload(ai_data_with_intent)
+
+    # Optional: allow direct calls too (even if usually nested under edit_session_entities)
+    if intent == "edit_person":
+        return validate_edit_person_payload(ai_data_with_intent)
+
+    if intent == "edit_item":
+        return validate_edit_item_payload(ai_data_with_intent)
+
+    return ValidationResult(False, {}, [f"Unsupported intent: {intent}"])
+
 
 
 def validate_create_session_payload(ai_data: Dict[str, Any]) -> ValidationResult:

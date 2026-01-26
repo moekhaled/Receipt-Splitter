@@ -1,0 +1,61 @@
+{% extends "webapp/base.html" %}
+
+{% block title %}{{ session.title }}{% endblock %}
+
+{% block header_extras %}
+<a href="{% url 'add-person' session_pk=session.id %}" class="nav-button">
+    Add Person
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="session-header">
+    <h2>Receipt: {{ session.title }}</h2>
+    <a href="{% url 'edit-session' session_pk=session.id %}" class="btn btn-primary">Edit Receipt</a>
+    <a href="{% url 'session-details-detailed' session_pk=session.id %}" class="nav-button">View Detailed Breakdown</a>
+
+</div>
+
+<section id="people-section">
+
+    {% if persons %}
+    <table id="people-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Total</th>
+                <th>Taxed Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for person in persons %}
+            <tr>
+                <td>
+                    <a href="{% url 'person-details' session_pk=session.id person_pk=person.id %}">
+                        {{ person.name }}
+                    </a>
+                </td>
+                <td>{{ person.total }}</td>
+                <td>
+                    {% if person.taxed_total %}
+                        {{ person.taxed_total }}
+                    {% else %}
+                        {{ person.total }}
+                    {% endif %}
+                </td>
+            </tr>
+
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p id="grand-total" style="text-align:center; font-size:1.3em; margin-top:20px;">
+        Grand Total: {{ grand_total }}
+    </p>
+
+    {% else %}
+    <p style="text-align:center;">No people yet in this Receipt.</p>
+    {% endif %}
+
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% for m in history|default:"" %}
+  {% with role=m.role|default:"assistant" %}
+    <div class="ai-message {% if role == 'user' %}user{% else %}bot{% endif %}">
+      <div class="ai-bubble">{{ m.content|default:""|linebreaksbr }}</div>
+    </div>
+  {% endwith %}
+{% empty %}
+  <div class="ai-message bot">
+    <div class="ai-bubble">
+      Hi! Ask me to create/edit a receipt (e.g. “Create a receipt for Mo: Tea 100”).
+    </div>
+  </div>
+{% endfor %}

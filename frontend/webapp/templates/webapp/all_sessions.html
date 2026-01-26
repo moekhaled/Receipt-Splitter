@@ -1,0 +1,55 @@
+{% extends "webapp/base.html" %}
+
+{% block title %}All Receipts{% endblock %}
+
+{% block content %}
+<h2 style="text-align:center; margin-top:30px;">All Receipts</h2>
+
+<div style="text-align:center; margin-bottom:20px;">
+    <a href="{% url 'add-session' %}" class="nav-button">
+        + New Receipt
+    </a>
+</div>
+
+{# If backend is unreachable / returns an error, show it clearly #}
+{% if error %}
+    <p style="text-align:center; color:#b00020; margin-bottom:16px;">
+        {{ error }}
+    </p>
+{% endif %}
+
+{% if sessions %}
+<table id="sessions-table">
+    <thead>
+        <tr>
+            <th>Receipt Name</th>
+            <th>Created At</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for session in sessions %}
+        <tr>
+            <td>
+                {# session is now a dict from backend JSON; use session.id not session.pk #}
+                <a href="{% url 'session-details' session_pk=session.id %}">
+                    {{ session.title|default:"(untitled)" }}
+                </a>
+            </td>
+
+            {# created_at may not exist in backend list response yet; fall back safely #}
+            <td>
+                {% if session.created_at %}
+                    {{ session.created_at|slice:":10" }}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="text-align:center;">No receipt yet.</p>
+{% endif %}
+{% endblock %}

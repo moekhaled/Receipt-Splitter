@@ -1,0 +1,61 @@
+{% extends "webapp/base.html" %}
+
+{% block title %}New Receipt{% endblock %}
+
+{% block content %}
+<div id="session-form-container">
+    <h2>Create New Receipt</h2>
+
+    {# Non-field errors (e.g., backend/network failures from delegated POST) #}
+    {% if form.non_field_errors %}
+        <div class="form-error">
+            {{ form.non_field_errors|striptags }}
+        </div>
+    {% endif %}
+
+    <form method="post" id="session-form" novalidate>
+        {% csrf_token %}
+
+        {# Title row #}
+        <div class="session-form-row">
+            <label for="{{ form.title.id_for_label }}">Session Name</label>
+            {{ form.title }}
+            {% if form.title.errors %}
+                <div class="field-error">{{ form.title.errors|striptags }}</div>
+            {% endif %}
+        </div>
+
+        {# Tax / Service / Discount in a compact grid #}
+        <div class="session-grid">
+            <div class="session-form-row small">
+                <label for="{{ form.tax.id_for_label }}">Tax/VAT %</label>
+                {{ form.tax }}
+                {% if form.tax.errors %}
+                    <div class="field-error">{{ form.tax.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="session-form-row small">
+                <label for="{{ form.service.id_for_label }}">Service %</label>
+                {{ form.service }}
+                {% if form.service.errors %}
+                    <div class="field-error">{{ form.service.errors|striptags }}</div>
+                {% endif %}
+            </div>
+
+            <div class="session-form-row small">
+                <label for="{{ form.discount.id_for_label }}">Discount %</label>
+                {{ form.discount }}
+                {% if form.discount.errors %}
+                    <div class="field-error">{{ form.discount.errors|striptags }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="session-form-actions">
+            <button type="submit" class="btn-primary">Create Receipt</button>
+            <a href="{% url 'all-sessions' %}" class="btn-cancel">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

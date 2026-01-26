@@ -1,0 +1,37 @@
+{% extends "webapp/base.html" %}
+
+{% block title %}Add Person{% endblock %}
+
+{% block content %}
+<div id="add-person-container">
+    <h2>Add a New Person</h2>
+
+    {# Show non-field errors (e.g., backend validation/network errors) #}
+    {% if form.non_field_errors %}
+        <div class="form-error">
+            {{ form.non_field_errors|striptags }}
+        </div>
+    {% endif %}
+
+    <form method="POST" id="add-person-form" novalidate>
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="{{ form.name.id_for_label }}">Name:</label>
+            {{ form.name }}
+            {% if form.name.errors %}
+                <div class="field-error">{{ form.name.errors|striptags }}</div>
+            {% endif %}
+        </div>
+
+        <div class="edit-actions">
+            <button type="submit" class="form-button">Add Person</button>
+
+            {# Cancel safely without ORM relations; session_pk is passed from the view #}
+            {% if session_pk %}
+                <a href="{% url 'session-details' session_pk=session_pk %}" class="btn-cancel">Cancel</a>
+            {% else %}
+                <a href="{% url 'all-sessions' %}" class="btn-cancel">Cancel</a>
+             {% endif %}
+        </div>
+{% endblock %}

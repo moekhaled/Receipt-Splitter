@@ -28,6 +28,12 @@ services:
       - db
 
   ai:
+    command: >
+      gunicorn ai_service.wsgi:application
+      --bind 0.0.0.0:8080
+      --workers 2
+      --timeout 180
+      --graceful-timeout 30
     build:
       context: .
       dockerfile: services/ai/Dockerfile

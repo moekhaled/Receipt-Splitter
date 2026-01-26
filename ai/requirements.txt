@@ -1,0 +1,6 @@
+Django==6.0.1
+requests
+gunicorn
+-e file:../packages/receipt_splitter_contracts
+google-genai
+pydantic

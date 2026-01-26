@@ -1,0 +1,269 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>{% block title %}{% endblock %}</title>
+
+  <link rel="stylesheet" href="{% static 'webapp/styles.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+  <header id="main-header">
+    <nav id="main-nav">
+      <a href="{% url 'all-sessions' %}" class="nav-button">All Receipts</a>
+      {% block header_extras %}{% endblock %}
+    </nav>
+  </header>
+
+  <main id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- AI Assistant (moved INSIDE <body> to be valid HTML) -->
+  <div id="ai-assistant" class="ai-assistant" data-open="false">
+    <button id="ai-toggle" class="ai-toggle" aria-label="Open AI Assistant" aria-expanded="false">
+      ✨
+    </button>
+
+    <!-- dim background on mobile -->
+    <div id="ai-overlay" class="ai-overlay" hidden></div>
+
+    <div
+      id="ai-panel"
+      class="ai-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ai-title"
+      aria-hidden="true"
+    >
+      <div id="ai-header" class="ai-header">
+        <span id="ai-title" class="ai-title">AI Assistant</span>
+        <button id="ai-close" class="ai-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div id="ai-messages" class="ai-messages">
+        {# Render server-stored history if present #}
+        {% include "webapp/_ai_messages.html" with history=ai_chat_history %}
+      </div>
+
+      <form
+        id="ai-form"
+        class="ai-form"
+        data-ai-url="/ai/parse/"
+        {% if session and session.id %}
+          data-session-id="{{ session.id }}"
+        {% elif session_id %}
+          data-session-id="{{ session_id }}"
+        {% elif session_pk %}
+          data-session-id="{{ session_pk }}"
+        {% elif pk %}
+          data-session-id="{{ pk }}"
+        {% endif %}
+      >
+        {% csrf_token %}
+        <textarea
+          id="ai-input"
+          class="ai-input"
+          placeholder="Create a receipt for Mo: Tea 100"
+          rows="2"
+        ></textarea>
+        <button class="ai-send" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const toggleBtn = document.getElementById("ai-toggle");
+  const panel = document.getElementById("ai-panel");
+  const closeBtn = document.getElementById("ai-close");
+  const form = document.getElementById("ai-form");
+  const input = document.getElementById("ai-input");
+  const messages = document.getElementById("ai-messages");
+
+  const aiUrl = form?.dataset.aiUrl || "/ai/parse/";
+
+  // Build history from rendered DOM (server-rendered messages)
+  const loadHistoryFromDOM = () => {
+    const items = [];
+    const nodes = messages.querySelectorAll(".ai-message.user, .ai-message.bot");
+    nodes.forEach((node) => {
+      const isUser = node.classList.contains("user");
+      const bubble = node.querySelector(".ai-bubble");
+      if (!bubble) return;
+
+      const text = (bubble.textContent || "").trim();
+      if (!text) return;
+
+      // IMPORTANT: ignore transient UI text if it exists in DOM for any reason
+      if (text === "🤖 Thinking...") return;
+
+      items.push({ role: isUser ? "user" : "assistant", content: text });
+    });
+    return items;
+  };
+
+  // Local copy used only to send to AI (AI service accepts history)
+  const chatHistory = loadHistoryFromDOM();
+
+  const scrollToBottom = () => {
+    messages.scrollTop = messages.scrollHeight;
+  };
+
+  // Append message bubble to DOM; optionally also push to local chatHistory
+  const addMessage = (text, who = "bot", persistToHistory = true) => {
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("ai-message", who);
+
+    const bubble = document.createElement("div");
+    bubble.classList.add("ai-bubble");
+    bubble.textContent = text;
+
+    wrapper.appendChild(bubble);
+    messages.appendChild(wrapper);
+    scrollToBottom();
+
+    if (persistToHistory) {
+      const role = who === "user" ? "user" : "assistant";
+      chatHistory.push({ role, content: text });
+
+      // keep last 24 messages to avoid huge payloads
+      if (chatHistory.length > 24) chatHistory.splice(0, chatHistory.length - 24);
+    }
+
+    return wrapper;
+  };
+
+  const getCsrfToken = () =>
+    document.querySelector('#ai-form input[name="csrfmiddlewaretoken"]')?.value || "";
+
+  // Prime CSRF cookie (safe even if already set)
+  fetch("/ai/csrf/", { credentials: "same-origin" }).catch(() => {});
+
+  // Helper: get session id from dataset or URL (/sessions/<id>/...)
+  const getSessionId = () => {
+    const fromDataset = (form?.dataset?.sessionId || "").trim();
+    if (fromDataset) {
+      const n = Number(fromDataset);
+      if (Number.isInteger(n) && n > 0) return n;
+    }
+
+    const m = window.location.pathname.match(/\/sessions\/(\d+)/);
+    if (m && m[1]) {
+      const n = Number(m[1]);
+      if (Number.isInteger(n) && n > 0) return n;
+    }
+
+    return null;
+  };
+
+  // Persist one message into Django session via frontend endpoint
+  const persistOne = async (role, content) => {
+    const csrfToken = getCsrfToken();
+    try {
+      await fetch("/history/append/", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify({ role, content }),
+      });
+    } catch (_) {
+      // non-fatal; UI can still proceed
+    }
+  };
+
+  // Enter submits, Shift+Enter newline
+  input?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      form?.requestSubmit();
+    }
+  });
+
+  // Panel Open / Close
+  toggleBtn?.addEventListener("click", () => {
+    panel.classList.toggle("open");
+    if (panel.classList.contains("open")) input?.focus();
+  });
+
+  closeBtn?.addEventListener("click", () => {
+    panel.classList.remove("open");
+  });
+
+  // Submit handler
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const text = (input.value || "").trim();
+    if (!text) return;
+
+    // Show + store user message
+    addMessage(text, "user", true);
+    await persistOne("user", text);
+
+    input.value = "";
+
+    // Show thinking bubble but DO NOT store
+    const loadingBubble = addMessage("🤖 Thinking...", "bot", false);
+
+    // ✅ AI service expects: message + top-level session_id + history (optional)
+    const payload = { message: text, history: chatHistory };
+    const sessionId = getSessionId();
+    if (sessionId) payload.session_id = sessionId;
+
+    try {
+      const csrfToken = getCsrfToken();
+
+      const response = await fetch(aiUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      let data = {};
+      try { data = await response.json(); } catch (_) {}
+
+      loadingBubble.remove();
+
+      if (!response.ok) {
+        const errText = data.message || data.response || `❌ Request failed (${response.status})`;
+        addMessage(errText, "bot", true);
+        await persistOne("assistant", errText);
+        return;
+      }
+
+      // AI endpoint returns {ok, message, redirect_url?}
+      const botText = data.message || data.response || "Sorry, I couldn’t process that.";
+      addMessage(botText, "bot", true);
+      await persistOne("assistant", botText);
+
+      if (data.redirect_url) {
+        window.location.href = data.redirect_url;
+      }
+
+    } catch (err) {
+      console.error(err);
+      loadingBubble.remove();
+      const fallback = "❌ Error sending request. Try again.";
+      addMessage(fallback, "bot", true);
+      await persistOne("assistant", fallback);
+    }
+  });
+});
+</script>
+
+
+
+</body>
+</html>

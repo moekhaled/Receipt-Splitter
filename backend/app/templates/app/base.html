@@ -81,6 +81,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const input = document.getElementById("ai-input");
   const messages = document.getElementById("ai-messages");
 
+  // Build history from the already-rendered DOM (server session history)
+const loadHistoryFromDOM = () => {
+  const items = [];
+  const nodes = messages.querySelectorAll(".ai-message");
+  nodes.forEach((node) => {
+    const isUser = node.classList.contains("user");
+    const bubble = node.querySelector(".ai-bubble");
+    if (!bubble) return;
+
+    const text = (bubble.textContent || "").trim();
+    if (!text) return;
+
+    items.push({
+      role: isUser ? "user" : "assistant",
+      content: text,
+    });
+  });
+  return items;
+};
+
+const chatHistory = loadHistoryFromDOM();
+
+
   input?.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();              // don't insert newline
@@ -98,13 +121,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ✅ ADDED: helper to append chat bubbles
   const addMessage = (text, who = "bot") => {
+
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("ai-message", who);
+
     const bubble = document.createElement("div");
-    bubble.classList.add("ai-message", who);
+    bubble.classList.add("ai-bubble");
     bubble.textContent = text;
-    messages.appendChild(bubble);
+
+    wrapper.appendChild(bubble);
+    messages.appendChild(wrapper);
     scrollToBottom();
-    return bubble;
-  };
+
+    const role = (who === "user") ? "user" : "assistant";
+    chatHistory.push({ role, content: text });
+
+    // keep last 24 messages (12 turns) to avoid huge prompts
+    if (chatHistory.length > 24) chatHistory.splice(0, chatHistory.length - 24);
+
+    return wrapper;
+};
 
   // ✅ ADDED: read CSRF token from the hidden form input
   const getCsrfToken = () =>
@@ -142,7 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ✅ ADDED: simple loading bubble
     const loadingBubble = addMessage("🤖 Thinking...", "bot");
-    const payload = { prompt: text };
+    const payload = { prompt: text, history: chatHistory };
     const sessionId = form.dataset.sessionId;
     if (sessionId) payload.context = { session_id: Number(sessionId) };
 
@@ -166,7 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // response isn't JSON
       }
 
-      // ✅ ADDED: remove loading bubble before showing final message
+      // remove loading bubble before showing final message
       loadingBubble.remove();
 
       if (!response.ok) {
@@ -176,14 +212,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
       addMessage(data.response || "Sorry, I couldn’t process that.", "bot");
 
-      // ✅ ADDED: optional redirect support (if backend returns it)
+      // ✅ Persist to backend session history (so refresh keeps chat)
+      try {
+        await fetch("/api/ai/history/append/", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+          },
+          body: JSON.stringify({
+            user: text,
+            bot: (data.response || "Sorry, I couldn’t process that."),
+          }),
+        });
+      } catch (_) {
+        // Don't block the UX if saving history fails
+      }
+
+      // optional redirect support (if backend returns it)
       if (data.action === "redirect" && data.redirect_url) {
         window.location.href = data.redirect_url;
       }
 
     } catch (err) {
       console.error(err);
-      // ✅ ADDED: remove loading bubble if request failed
+      // remove loading bubble if request failed
       loadingBubble.remove();
       addMessage("❌ Error sending request. Try again.", "bot");
     }
