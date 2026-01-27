@@ -47,13 +47,18 @@ services:
   ai:
     build:
       context: ..
-      dockerfile: ai/Dockerfile
+      dockerfile: ai_fastapi/Dockerfile
     environment:
       BACKEND_BASE_URL: http://backend:8000
       BACKEND_AI_EXECUTE_PATH: /api/ai/execute/
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     expose:
       - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/ai/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     depends_on:
       backend:
         condition: service_healthy
