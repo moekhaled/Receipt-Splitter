@@ -8,6 +8,14 @@ It is deployed as multiple services behind an nginx reverse proxy and is built a
 
 ---
 
+## Live Demo
+
+Try the hosted app here: https://receipt-splitter-omvm.onrender.com/
+
+Note: The Render instance may **spin down when idle**. On your first visit it can take up to **~50 seconds** to wake up.
+
+---
+
 ## Runtime architecture
 
 The stack runs as **5 containers** via Docker Compose:
