@@ -10,7 +10,6 @@ from .backend_client import get_session_context, execute_action
 from google import genai
 from google.genai import types
 
-from .util import extract_json_object
 from .prompts import SYSTEM_PROMPT
 from .llm_schema import AIAction
 
@@ -47,23 +46,6 @@ def _safe_json_loads(text: str) -> Dict[str, Any]:
         return data if isinstance(data, dict) else {}
     except Exception:
         return {}
-
-def build_system_prompt() -> str:
-    return SYSTEM_PROMPT
-    
-
-
-def build_user_prompt(message, history, context):
-    return (
-        "CONTEXT JSON:\n"
-        f"{context or {}}\n\n"
-        "CHAT HISTORY (most recent last):\n"
-        + "\n".join([f"{m.role}: {m.content}" for m in history[-20:]])
-        + "\n\n"
-        "USER MESSAGE:\n"
-        f"{message}\n\n"
-        "Return ONLY the JSON object."
-    )
 
 def parse_receipt_prompt(user_prompt: str, history: Optional[List[Dict[str, str]]] = None, *, context: Optional[Dict[str, Any]] = None,) -> Dict[str, Any]:
     """
