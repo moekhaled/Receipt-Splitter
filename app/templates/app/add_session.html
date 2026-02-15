@@ -1,17 +1,17 @@
 {% extends "app/base.html" %}
 
-{% block title %}New Session{% endblock %}
+{% block title %}New Receipt{% endblock %}
 
 {% block content %}
 <div id="session-form-container">
-    <h2>Create New Session</h2>
+    <h2>Create New Receipt</h2>
 
     <form method="post" id="session-form" novalidate>
         {% csrf_token %}
 
         {# Title row #}
         <div class="session-form-row">
-            <label for="{{ form.title.id_for_label }}">Session Name</label>
+            <label for="{{ form.title.id_for_label }}">Receipt Name</label>
             {{ form.title }}
             {% if form.title.errors %}
                 <div class="field-error">{{ form.title.errors|striptags }}</div>
@@ -46,7 +46,7 @@
         </div>
 
         <div class="session-form-actions">
-            <button type="submit" class="btn-primary">Create Session</button>
+            <button type="submit" class="btn-primary">Create Receipt</button>
             <a href="{% url 'all-sessions' %}" class="btn-cancel">Cancel</a>
         </div>
     </form>

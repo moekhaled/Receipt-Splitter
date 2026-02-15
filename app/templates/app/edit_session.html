@@ -1,6 +1,6 @@
 {% extends "app/base.html" %}
 
-{% block title %}Edit Session{% endblock %}
+{% block title %}Edit Receipt{% endblock %}
 
 {% block content %}
 <div id="session-form-container">
@@ -11,7 +11,7 @@
 
         {# Title row #}
         <div class="session-form-row">
-            <label for="{{ form.title.id_for_label }}">Session Name</label>
+            <label for="{{ form.title.id_for_label }}">Receipt Name</label>
             {{ form.title }}
             {% if form.title.errors %}
                 <div class="field-error">{{ form.title.errors|striptags }}</div>
@@ -49,7 +49,7 @@
         <div class="session-form-actions">
             <button type="submit" class="btn-primary">Save Changes</button>
 
-            <a href="{% url 'delete-session' session.pk %}" class="danger-button"> Delete Session </a>
+            <a href="{% url 'delete-session' session.pk %}" class="danger-button"> Delete Receipt </a>
 
             <a href="{% url 'session-details' session.id %}" class="btn-cancel">Back</a>
         </div>
